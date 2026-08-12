@@ -1,0 +1,183 @@
+{
+  "run_at": "2026-08-02T10:03:32Z",
+  "model": "qwen2.5:3b",
+  "n_examples": 3,
+  "format_valid_pct": 100.0,
+  "item_precision_pct": 100.0,
+  "item_recall_pct": 100.0,
+  "calorie_mape_pct": 35.4,
+  "confidence_calibration_score_pct": 0.0,
+  "confidence_calibration_detail": {
+    "error_rate_by_confidence": {
+      "low": 0.0,
+      "medium": 0.6666666666666666,
+      "high": 1.0
+    },
+    "n_items_by_confidence": {
+      "low": 1,
+      "medium": 3,
+      "high": 1
+    },
+    "n_unlabeled_or_unmatched": 0,
+    "calibration_score": 0.0,
+    "note": null
+  },
+  "failures": [
+    {
+      "input": "2 rotis with dal",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "2 rotis with dal",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "roti",
+            "quantity": 2,
+            "unit": "whole",
+            "calories_kcal_range": [
+              160,
+              200
+            ]
+          },
+          {
+            "name": "dal",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          310,
+          420
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "roti",
+            "quantity": 2.0,
+            "unit": "pieces",
+            "calories_kcal": 300.0,
+            "protein_g": 4.0,
+            "carbs_g": 65.0,
+            "fat_g": 1.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "dal",
+            "quantity": 1.0,
+            "unit": "serving",
+            "calories_kcal": 200.0,
+            "protein_g": 8.0,
+            "carbs_g": 45.0,
+            "fat_g": 3.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 500.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "roti",
+          "expected_range": [
+            160,
+            200
+          ],
+          "got_kcal": 300.0,
+          "in_range": false,
+          "pct_error": 66.7
+        }
+      ]
+    },
+    {
+      "input": "paneer butter masala with rice",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "paneer butter masala with rice",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "paneer butter masala",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              300,
+              450
+            ]
+          },
+          {
+            "name": "rice",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          500,
+          670
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "rice",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 105.0,
+            "protein_g": 2.4,
+            "carbs_g": 23.8,
+            "fat_g": 0.6,
+            "confidence": "medium"
+          },
+          {
+            "name": "paneer butter masala",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 254.0,
+            "protein_g": 9.3,
+            "carbs_g": 20.7,
+            "fat_g": 8.6,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 359.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "paneer butter masala",
+          "expected_range": [
+            300,
+            450
+          ],
+          "got_kcal": 254.0,
+          "in_range": false,
+          "pct_error": 32.3
+        },
+        {
+          "name": "rice",
+          "expected_range": [
+            200,
+            220
+          ],
+          "got_kcal": 105.0,
+          "in_range": false,
+          "pct_error": 50.0
+        }
+      ]
+    }
+  ],
+  "total_wall_clock_s": 88.5,
+  "dataset": "meals.jsonl"
+}

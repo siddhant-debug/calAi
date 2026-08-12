@@ -1,0 +1,37 @@
+{
+  "_what_this_is": "Frozen snapshot of evals/report/latest.json's top-level scores at the moment ADR-003 Action Items 4 and 7 confirmed parity between the pre-split parse_meal_text baseline and the extracted MealParseAgent / post-Orchestrator-rewrite path. evals/report/latest.json will keep changing as future runs happen; this file exists so the specific comparison point ADR-003 cites doesn't drift or get overwritten.",
+  "baseline": {
+    "run_at": "2026-08-01T14:xx (Session 3, pre-split parse_meal_text)",
+    "model": "qwen2.5:3b",
+    "n_examples": 33,
+    "format_valid_pct": 100.0,
+    "item_precision_pct": 83.6,
+    "item_recall_pct": 92.0,
+    "calorie_mape_pct": 59.3,
+    "confidence_calibration_score_pct": 39.6
+  },
+  "post_extraction_action_item_4": {
+    "description": "Re-run against extracted MealParseAgent (ADR-003 step 3 done, step 6 not yet started)",
+    "model": "qwen2.5:3b",
+    "n_examples": 33,
+    "format_valid_pct": 100.0,
+    "item_precision_pct": 83.6,
+    "item_recall_pct": 92.0,
+    "calorie_mape_pct": 59.3,
+    "confidence_calibration_score_pct": 39.6,
+    "verdict": "exact parity with baseline"
+  },
+  "post_orchestrator_action_item_7": {
+    "description": "Re-run after the full Orchestrator rewrite (ADR-003 steps 2-6 all done)",
+    "model": "qwen2.5:3b",
+    "n_examples": 33,
+    "format_valid_pct": 100.0,
+    "item_precision_pct": 83.6,
+    "item_recall_pct": 92.0,
+    "calorie_mape_pct": 59.3,
+    "confidence_calibration_score_pct": 39.6,
+    "verdict": "exact parity with baseline"
+  },
+  "reason_for_exact_repeated_numbers": "parse_meal_text / MealParseAgent uses temperature=0 against a fixed dataset, so re-running the identical prompt/model/input against unchanged logic is expected to reproduce the same output deterministically — this is a positive signal, not a copy-paste artifact: it confirms the extraction and orchestrator rewrite genuinely didn't touch meal-parsing behavior.",
+  "known_caveat_carried_forward": "confidence_calibration_score_pct (39.6) remains below the 50% no-signal line — confidence is still an inverted/untrustworthy signal. No part of ADR-003's implementation gates on confidence, per the explicit note in ADR-003's Action Items section."
+}

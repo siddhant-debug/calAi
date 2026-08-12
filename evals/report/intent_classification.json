@@ -1,0 +1,28 @@
+{
+  "run_at": "2026-08-02T09:16:05Z",
+  "model": "qwen2.5:3b",
+  "n_examples": 7,
+  "format_valid_pct": 100.0,
+  "item_precision_pct": 0.0,
+  "item_recall_pct": 0.0,
+  "calorie_mape_pct": null,
+  "confidence_calibration_score_pct": null,
+  "confidence_calibration_detail": {
+    "error_rate_by_confidence": {
+      "low": null,
+      "medium": null,
+      "high": null
+    },
+    "n_items_by_confidence": {
+      "low": 0,
+      "medium": 0,
+      "high": 0
+    },
+    "n_unlabeled_or_unmatched": 0,
+    "calibration_score": null,
+    "note": "insufficient data: need matched items at both 'high' and 'low' confidence"
+  },
+  "failures": [],
+  "total_wall_clock_s": 122.9,
+  "dataset": "intent_classification.jsonl"
+}

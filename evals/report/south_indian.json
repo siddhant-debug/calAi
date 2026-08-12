@@ -1,0 +1,575 @@
+{
+  "run_at": "2026-08-02T10:16:20Z",
+  "model": "qwen2.5:3b",
+  "n_examples": 10,
+  "format_valid_pct": 100.0,
+  "item_precision_pct": 68.2,
+  "item_recall_pct": 93.8,
+  "calorie_mape_pct": 37.4,
+  "confidence_calibration_score_pct": 75.0,
+  "confidence_calibration_detail": {
+    "error_rate_by_confidence": {
+      "low": 0.5,
+      "medium": 0.6363636363636364,
+      "high": 0.0
+    },
+    "n_items_by_confidence": {
+      "low": 2,
+      "medium": 11,
+      "high": 2
+    },
+    "n_unlabeled_or_unmatched": 0,
+    "calibration_score": 75.0,
+    "note": null
+  },
+  "failures": [
+    {
+      "input": "masala dosa with sambar",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "masala dosa with sambar",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "masala dosa",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              200,
+              350
+            ]
+          },
+          {
+            "name": "sambar",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              100,
+              150
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          500
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "masala dosa",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 200.0,
+            "protein_g": 3.0,
+            "carbs_g": 45.0,
+            "fat_g": 2.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "sambar",
+            "quantity": 1.0,
+            "unit": "serving",
+            "calories_kcal": 80.0,
+            "protein_g": 3.0,
+            "carbs_g": 15.0,
+            "fat_g": 2.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 280.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "sambar",
+          "expected_range": [
+            100,
+            150
+          ],
+          "got_kcal": 80.0,
+          "in_range": false,
+          "pct_error": 36.0
+        }
+      ]
+    },
+    {
+      "input": "medu vada with sambar",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "medu vada with sambar",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "medu vada",
+            "quantity": 2,
+            "unit": "piece",
+            "calories_kcal_range": [
+              180,
+              240
+            ]
+          },
+          {
+            "name": "sambar",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              100,
+              150
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          280,
+          390
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "medu vada",
+            "quantity": 4.0,
+            "unit": "pieces",
+            "calories_kcal": 200.0,
+            "protein_g": 3.0,
+            "carbs_g": 18.0,
+            "fat_g": 2.0,
+            "confidence": "high"
+          },
+          {
+            "name": "sambar",
+            "quantity": 250.0,
+            "unit": "ml",
+            "calories_kcal": 40.0,
+            "protein_g": 1.0,
+            "carbs_g": 9.0,
+            "fat_g": 0.5,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 240.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "sambar",
+          "expected_range": [
+            100,
+            150
+          ],
+          "got_kcal": 40.0,
+          "in_range": false,
+          "pct_error": 68.0
+        }
+      ]
+    },
+    {
+      "input": "curd rice with pickle",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "curd rice with pickle",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "curd rice",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              280
+            ]
+          },
+          {
+            "name": "pickle",
+            "quantity": 1,
+            "unit": "tbsp",
+            "calories_kcal_range": [
+              15,
+              30
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          215,
+          310
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "rice",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 60.0,
+            "protein_g": 1.0,
+            "carbs_g": 15.0,
+            "fat_g": 0.2,
+            "confidence": "medium"
+          },
+          {
+            "name": "curd",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 98.0,
+            "protein_g": 3.0,
+            "carbs_g": 14.0,
+            "fat_g": 0.5,
+            "confidence": "medium"
+          },
+          {
+            "name": "pickle",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 20.0,
+            "protein_g": 0.5,
+            "carbs_g": 4.0,
+            "fat_g": 0.3,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 182.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "curd"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "curd rice",
+          "expected_range": [
+            200,
+            280
+          ],
+          "got_kcal": 60.0,
+          "in_range": false,
+          "pct_error": 75.0
+        }
+      ]
+    },
+    {
+      "input": "a plate of bisi bele bath",
+      "reason": "missed_items",
+      "expected": {
+        "input": "a plate of bisi bele bath",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "bisi bele bath",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              300,
+              450
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          450
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "Rice",
+            "quantity": 1.0,
+            "unit": "piece/g/ml/cup/etc",
+            "calories_kcal": 21.0,
+            "protein_g": 0.8,
+            "carbs_g": 4.5,
+            "fat_g": 0.3,
+            "confidence": "medium"
+          },
+          {
+            "name": "Beans (white kidney beans)",
+            "quantity": 1.0,
+            "unit": "piece/g/ml/cup/etc",
+            "calories_kcal": 26.0,
+            "protein_g": 4.5,
+            "carbs_g": 3.8,
+            "fat_g": 0.7,
+            "confidence": "medium"
+          },
+          {
+            "name": "Tomatoes (fresh)",
+            "quantity": 1.0,
+            "unit": "piece/g/ml/cup/etc",
+            "calories_kcal": 21.0,
+            "protein_g": 0.4,
+            "carbs_g": 3.8,
+            "fat_g": 0.1,
+            "confidence": "medium"
+          },
+          {
+            "name": "Onions (fresh)",
+            "quantity": 1.0,
+            "unit": "piece/g/ml/cup/etc",
+            "calories_kcal": 24.0,
+            "protein_g": 0.3,
+            "carbs_g": 5.1,
+            "fat_g": 0.1,
+            "confidence": "medium"
+          },
+          {
+            "name": "Pepper (fresh)",
+            "quantity": 1.0,
+            "unit": "piece/g/ml/cup/etc",
+            "calories_kcal": 26.0,
+            "protein_g": 0.3,
+            "carbs_g": 4.5,
+            "fat_g": 0.1,
+            "confidence": "medium"
+          },
+          {
+            "name": "Oil (vegetable oil)",
+            "quantity": 1.0,
+            "unit": "ml",
+            "calories_kcal": 896.0,
+            "protein_g": 0.0,
+            "carbs_g": 0.0,
+            "fat_g": 52.4,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 1379.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [
+        "bisi bele bath"
+      ],
+      "unmatched_got": [
+        "Rice",
+        "Beans (white kidney beans)",
+        "Tomatoes (fresh)",
+        "Onions (fresh)",
+        "Pepper (fresh)",
+        "Oil (vegetable oil)"
+      ],
+      "out_of_range_items": []
+    },
+    {
+      "input": "chicken chettinad with rice",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "chicken chettinad with rice",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "chicken chettinad",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              300,
+              450
+            ]
+          },
+          {
+            "name": "rice",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          500,
+          670
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "chicken",
+            "quantity": 100.0,
+            "unit": "g",
+            "calories_kcal": 236.5,
+            "protein_g": 28.4,
+            "carbs_g": 0.0,
+            "fat_g": 9.7,
+            "confidence": "medium"
+          },
+          {
+            "name": "rice",
+            "quantity": 100.0,
+            "unit": "g",
+            "calories_kcal": 33.0,
+            "protein_g": 1.2,
+            "carbs_g": 8.4,
+            "fat_g": 0.2,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 269.5,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "chicken chettinad",
+          "expected_range": [
+            300,
+            450
+          ],
+          "got_kcal": 236.5,
+          "in_range": false,
+          "pct_error": 36.9
+        },
+        {
+          "name": "rice",
+          "expected_range": [
+            200,
+            220
+          ],
+          "got_kcal": 33.0,
+          "in_range": false,
+          "pct_error": 84.3
+        }
+      ]
+    },
+    {
+      "input": "vegetable kootu with rice",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "vegetable kootu with rice",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "vegetable kootu",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          },
+          {
+            "name": "rice",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          350,
+          440
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "rice",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 105.0,
+            "protein_g": 2.4,
+            "carbs_g": 23.8,
+            "fat_g": 0.9,
+            "confidence": "medium"
+          },
+          {
+            "name": "vegetable kootu",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 75.0,
+            "protein_g": 2.8,
+            "carbs_g": 14.6,
+            "fat_g": 0.9,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 180.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "vegetable kootu",
+          "expected_range": [
+            150,
+            220
+          ],
+          "got_kcal": 75.0,
+          "in_range": false,
+          "pct_error": 59.5
+        },
+        {
+          "name": "rice",
+          "expected_range": [
+            200,
+            220
+          ],
+          "got_kcal": 105.0,
+          "in_range": false,
+          "pct_error": 50.0
+        }
+      ]
+    },
+    {
+      "input": "a cup of filter coffee",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a cup of filter coffee",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "filter coffee",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              40,
+              70
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          40,
+          70
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "filter coffee",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 25.0,
+            "protein_g": 0.0,
+            "carbs_g": 3.0,
+            "fat_g": 0.0,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 25.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "filter coffee",
+          "expected_range": [
+            40,
+            70
+          ],
+          "got_kcal": 25.0,
+          "in_range": false,
+          "pct_error": 54.5
+        }
+      ]
+    }
+  ],
+  "total_wall_clock_s": 324.4,
+  "dataset": "south_indian.jsonl"
+}

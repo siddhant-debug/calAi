@@ -1,0 +1,10 @@
+{"input": "a samosa", "meal_type": "snack", "expected_items": [{"name": "samosa", "quantity": 1, "unit": "piece", "calories_kcal_range": [130, 250]}], "expected_total_kcal_range": [130, 250]}
+{"input": "a plate of pakora", "meal_type": "snack", "expected_items": [{"name": "pakora", "quantity": 1, "unit": "plate", "calories_kcal_range": [250, 400]}], "expected_total_kcal_range": [250, 400]}
+{"input": "a cup of masala chai", "meal_type": "snack", "expected_items": [{"name": "masala chai", "quantity": 1, "unit": "cup", "calories_kcal_range": [80, 120]}], "expected_total_kcal_range": [80, 120]}
+{"input": "a small bowl of namkeen mixture", "meal_type": "snack", "expected_items": [{"name": "namkeen mixture", "quantity": 1, "unit": "bowl", "calories_kcal_range": [150, 250]}], "expected_total_kcal_range": [150, 250]}
+{"input": "a handful of roasted peanuts", "meal_type": "snack", "expected_items": [{"name": "roasted peanuts", "quantity": 1, "unit": "handful", "calories_kcal_range": [160, 200]}], "expected_total_kcal_range": [160, 200]}
+{"input": "a plate of bhel puri", "meal_type": "snack", "expected_items": [{"name": "bhel puri", "quantity": 1, "unit": "plate", "calories_kcal_range": [150, 250]}], "expected_total_kcal_range": [150, 250]}
+{"input": "a small packet of chips", "meal_type": "snack", "expected_items": [{"name": "chips", "quantity": 1, "unit": "packet", "calories_kcal_range": [140, 180]}], "expected_total_kcal_range": [140, 180]}
+{"input": "a chocolate bar", "meal_type": "snack", "expected_items": [{"name": "chocolate bar", "quantity": 1, "unit": "piece", "calories_kcal_range": [200, 250]}], "expected_total_kcal_range": [200, 250]}
+{"input": "a cup of coffee with a biscuit", "meal_type": "snack", "expected_items": [{"name": "coffee", "quantity": 1, "unit": "cup", "calories_kcal_range": [0, 5]}, {"name": "biscuit", "quantity": 2, "unit": "piece", "calories_kcal_range": [70, 100]}], "expected_total_kcal_range": [70, 105]}
+{"input": "a bowl of popcorn", "meal_type": "snack", "expected_items": [{"name": "popcorn", "quantity": 1, "unit": "bowl", "calories_kcal_range": [90, 150]}], "expected_total_kcal_range": [90, 150]}

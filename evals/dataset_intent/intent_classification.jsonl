@@ -1,0 +1,7 @@
+{"input": "what's the weather like today", "expected_intent": "unknown"}
+{"input": "can you help me with my taxes", "expected_intent": "unknown"}
+{"input": "asdkjh qwoeiu random garbled text zzz 12938", "expected_intent": "unknown"}
+{"input": "I ate two rotis with dal for lunch", "expected_intent": "log_meal"}
+{"input": "just had a bowl of chicken biryani for dinner", "expected_intent": "log_meal"}
+{"input": "I'm 28 years old, weigh 70kg, 175cm tall, male, moderately active, trying to lose weight", "expected_intent": "set_profile"}
+{"input": "my weight is 60kg, height 165cm, age 32, female, sedentary, goal is to maintain", "expected_intent": "set_profile"}

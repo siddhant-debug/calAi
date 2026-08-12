@@ -1,0 +1,10 @@
+python-dotenv
+langchain
+langchain-core
+langchain-ollama
+langchain-community
+tavily-python
+pydantic
+langsmith
+fastapi
+uvicorn

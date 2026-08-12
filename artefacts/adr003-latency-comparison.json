@@ -1,0 +1,45 @@
+{
+  "_what_this_is": "ADR-003 Action Item 7 result: real-Ollama latency comparison between the old ReAct loop (_run_agent_react_loop) and the new Orchestrator (_run_agent_orchestrator) in calai_backend/services/agent_service.py. Produced by evals/latency_comparison.py, which prints to stdout and does not persist a file itself — this JSON is a transcription of that run's output, captured by the sdlc-orchestrator/reviewer stage that executed it, so the numbers are preserved as a durable artifact instead of living only in an agent report.",
+  "run_context": {
+    "model": "qwen2.5:3b",
+    "date": "2026-08-02",
+    "adr": "ADR-003 (archdocs/ADR-003-multiagent-split.md), Action Item 7",
+    "script": "evals/latency_comparison.py",
+    "runs_per_message_per_path": 1,
+    "note": "Single-run timing against a live local model, not a statistical study (see script docstring point 4) — treat as one representative data point, not a distribution."
+  },
+  "results": [
+    {
+      "label": "profile_only",
+      "message": "I'm a 28 year old male, 75kg, 178cm tall, moderately active, and I want to lose weight at 0.5kg per week.",
+      "react_loop_s": 76.60,
+      "orchestrator_s": 31.85,
+      "speedup_x": 2.41
+    },
+    {
+      "label": "meal_only",
+      "message": "I just had 2 eggs and a slice of toast for breakfast.",
+      "react_loop_s": 150.29,
+      "orchestrator_s": 73.20,
+      "speedup_x": 2.05
+    },
+    {
+      "label": "profile_and_meal",
+      "message": "I'm a 25 year old female, 60kg, 165cm, lightly active, trying to maintain. I had a bowl of oatmeal with banana for breakfast.",
+      "react_loop_s": 176.04,
+      "orchestrator_s": 73.99,
+      "speedup_x": 2.38
+    }
+  ],
+  "totals": {
+    "react_loop_total_s": 402.93,
+    "orchestrator_total_s": 179.04,
+    "overall_speedup_x": 2.25
+  },
+  "correctness_side_finding": {
+    "description": "On the profile_only message, the old ReAct loop's LLM-computed TDEE diverged sharply from the orchestrator's deterministic CalcPipeline result, on identical input.",
+    "react_loop_reported_tdee_kcal": 3726,
+    "orchestrator_calc_pipeline_tdee_kcal": 2678,
+    "interpretation": "Evidence the split fixes a real correctness gap (the old loop let the LLM re-derive arithmetic it was only supposed to sequence), not just a latency win."
+  }
+}

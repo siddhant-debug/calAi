@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# OS
+.DS_Store
+
+# Backend logs
+calai_backend/logs/
+
+# Scratch / internal working docs (kept locally, not published)
+learning.md
+error.txt
+tool_practice.py
+plans/
+archdocs/AGENT-HANDOFF.md
+archdocs/PLAN-architecture-designer-and-adr003.md
