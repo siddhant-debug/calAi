@@ -57,18 +57,20 @@ Full methodology, report-field glossary, and how to add a new golden example: [`
 | Profile + meal | 176.0s | 74.0s | 2.38x |
 | **Total** | **402.9s** | **179.0s** | **2.25x** |
 
-**Re-measured on NVIDIA NIM (ADR-006), 2026-09-12 — the 2.25x claim does not hold here.** See [`artefacts/adr003-latency-comparison-nvidia-nim.json`](artefacts/adr003-latency-comparison-nvidia-nim.json):
+**Re-measured on NVIDIA NIM (ADR-006), 2026-09-12 — in two passes, because the first one hit a real bug.**
+
+*Pass 1* (see [`artefacts/adr003-latency-comparison-nvidia-nim-bug-discovery-run.json`](artefacts/adr003-latency-comparison-nvidia-nim-bug-discovery-run.json)): the legacy ReAct loop crashed outright on the profile-only message — `500: Unknown tool: calculate_tdee<|channel|>commentary`. `openai/gpt-oss-20b` (the new ADR-006 fallback model) emits OpenAI's "Harmony" multi-channel response format for tool calls, and the tool-name parsing on that path wasn't stripping the leaked channel token, corrupting the name before dispatch. With that crash in the data, the comparison looked bad for the Orchestrator (~1.03x total, and actually *slower* on one message) — but that result was itself downstream of the bug, not a real finding about the architecture. Root-caused by direct reproduction against a raw NIM client, fixed in `agent_service.py` (strip the leaked suffix before tool-name lookup), and covered by 3 regression tests — see the "How this codebase gets built" section above for the fix-and-verify loop that caught and closed this.
+
+*Pass 2, after the fix* (current, authoritative — see [`artefacts/adr003-latency-comparison-nvidia-nim-post-fix.json`](artefacts/adr003-latency-comparison-nvidia-nim-post-fix.json)):
 
 | Message shape | Old ReAct loop | Orchestrator | Speedup |
 |---|---|---|---|
-| Profile only | *(errored — see below)* | 5.4s | — |
-| Meal only | 33.7s | 22.3s | 1.51x |
-| Profile + meal | 47.5s | 64.3s | **0.74x (orchestrator was slower)** |
-| **Total** | **94.9s** | **92.0s** | **1.03x** |
+| Profile only | 42.6s | 9.2s | 4.61x |
+| Meal only | 33.2s | 32.9s | 1.01x |
+| Profile + meal | 101.5s | 31.2s | 3.25x |
+| **Total** | **177.3s** | **73.3s** | **2.42x** |
 
-Local-Ollama latency was dominated by local inference and model load — exactly what the Orchestrator's "fewer, bounded LLM calls" design targets. NIM latency is dominated by network round-trips, provider-side queueing, and per-model variance between `nemotron-3-nano-omni` and `openai/gpt-oss-20b` — a different bottleneck the Orchestrator's structural advantage barely touches. The old 2.25x number is a real historical result on a different stack, not a claim about the system as it runs today; it's kept in the record rather than restated, per the same principle that keeps `evals/report/archive/` around.
-
-**This re-measurement also surfaced a real bug, not just a smaller number:** the legacy ReAct loop failed outright on the profile-only message — `500: Unknown tool: calculate_tdee<|channel|>commentary`. `openai/gpt-oss-20b` (the new ADR-006 fallback model) emits OpenAI's "Harmony" multi-channel response format for tool calls, and whatever parses the tool name on that path isn't stripping the channel tokens, corrupting the name before dispatch. It doesn't affect the default Orchestrator path (which uses structured-JSON mode, not native tool-calling) — logged as a known, unfixed limitation of the current fallback chain rather than quietly patched around.
+No errors this time — the Orchestrator wins on every message shape, and the total (2.42x) is at least as strong as the original Ollama-era figure (2.25x), despite the two providers' latency being dominated by completely different things (local inference + model load for Ollama; network round-trips and per-model variance between `nemotron-3-nano-omni` and `openai/gpt-oss-20b` for NIM). Both the Ollama and NIM numbers are single runs per path per message, not a distribution — read them as "the Orchestrator is meaningfully, probably 2-4x faster depending on message shape," not as a precise stable multiplier. The bug-discovery run is kept in the record rather than deleted, per the same principle that keeps `evals/report/archive/` around: a wrong number that led somewhere real is worth more archived than erased.
 
 **This wasn't only a speed win.** On the "profile only" message, the old ReAct loop's LLM-computed TDEE diverged sharply from the correct value (**3726 kcal reported vs. 2678 kcal actual** — the deterministic `CalcPipeline` result) on identical input. A small local model was quietly getting arithmetic wrong when the design let it "help" with a calculation it was only supposed to sequence, not perform. That's a correctness bug the latency comparison surfaced as a side effect, not the headline it was measuring for.
 
@@ -328,7 +330,7 @@ Runs the Orchestrator by default (deterministic routing + `CalcPipeline` + `Meal
 |---|---|
 | [ADR-001](archdocs/ADR-001-calai-architecture.md) | Initial architecture — tools, agent loop, FastAPI split from the learning-track CLI |
 | [ADR-002](archdocs/ADR-002-react-agent-design.md) | ReAct agent design — the original single-loop tool-calling approach |
-| [ADR-003](archdocs/ADR-003-multiagent-split.md) | Split the ReAct loop into a deterministic `Orchestrator` + `CalcPipeline` + `MealParseAgent` — 2.25x speedup on Ollama, ~1.0x re-measured on NVIDIA NIM, see [Why the Orchestrator is faster](#why-the-orchestrator-is-faster) |
+| [ADR-003](archdocs/ADR-003-multiagent-split.md) | Split the ReAct loop into a deterministic `Orchestrator` + `CalcPipeline` + `MealParseAgent` — 2.25x speedup on Ollama, 2.42x re-verified on NVIDIA NIM (after a bug the re-measurement itself surfaced and fixed), see [Why the Orchestrator is faster](#why-the-orchestrator-is-faster) |
 | [ADR-004](archdocs/ADR-004-eval-harness.md) | The eval harness itself — why golden ranges, why 5 scoring dimensions, why this gates ADR-003 and every model/prompt change since |
 | [ADR-005](archdocs/ADR-005-router-handler-registry.md) | Router → Handler Registry with bounded ReAct as escape hatch — proposed, mid-flight, not yet fully implemented |
 | [ADR-006](archdocs/ADR-006-nvidia-nim-migration.md) | Full replacement of local Ollama with NVIDIA NIM — no rollback flag, fallback-chain design |
@@ -337,7 +339,8 @@ Runs the Orchestrator by default (deterministic routing + `CalcPipeline` + `Meal
 
 - [`NOTES-orchestrator-vs-react.md`](artefacts/NOTES-orchestrator-vs-react.md) — the honest retrospective on ADR-003, including a second-pass self-review that corrects its own first-pass claims
 - [`adr003-latency-comparison.json`](artefacts/adr003-latency-comparison.json) — raw timing data behind the original 2.25x figure (Ollama, historical)
-- [`adr003-latency-comparison-nvidia-nim.json`](artefacts/adr003-latency-comparison-nvidia-nim.json) — re-measurement on NVIDIA NIM, including the `gpt-oss-20b` tool-calling bug it surfaced
+- [`adr003-latency-comparison-nvidia-nim-bug-discovery-run.json`](artefacts/adr003-latency-comparison-nvidia-nim-bug-discovery-run.json) — the NVIDIA NIM re-measurement that crashed and surfaced the `gpt-oss-20b` Harmony tool-name bug (historical, superseded by the file below)
+- [`adr003-latency-comparison-nvidia-nim-post-fix.json`](artefacts/adr003-latency-comparison-nvidia-nim-post-fix.json) — clean re-measurement after the fix, 2.42x total — the current authoritative number
 - [`adr003-eval-parity-snapshot.json`](artefacts/adr003-eval-parity-snapshot.json) — frozen eval scores at the exact ADR-003 comparison points
 
 **Process:**

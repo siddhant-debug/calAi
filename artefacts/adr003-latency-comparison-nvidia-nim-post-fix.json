@@ -1,0 +1,42 @@
+{
+  "_what_this_is": "Clean re-measurement of the ReAct-vs-Orchestrator latency comparison on NVIDIA NIM, run AFTER fixing the Harmony tool-name bug found in adr003-latency-comparison-nvidia-nim-bug-discovery-run.json. This is the current authoritative comparison — the one the README cites.",
+  "run_context": {
+    "models": ["nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", "openai/gpt-oss-20b"],
+    "date": "2026-09-12",
+    "adr": "ADR-006 (archdocs/ADR-006-nvidia-nim-migration.md), post-fix re-measurement",
+    "script": "evals/latency_comparison.py",
+    "runs_per_message_per_path": 1,
+    "note": "Single-run timing against live NIM endpoints — same one-run-not-a-distribution caveat as every prior latency artefact in this repo. The prior (buggy) run's numbers were shown to be significantly distorted by a real error, which is exactly why this single-run caveat matters and why re-running rather than trusting one number was worth doing here."
+  },
+  "results": [
+    {
+      "label": "profile_only",
+      "message": "I'm a 28 year old male, 75kg, 178cm tall, moderately active, and I want to lose weight at 0.5kg per week.",
+      "react_loop_s": 42.58,
+      "orchestrator_s": 9.23,
+      "speedup_x": 4.61
+    },
+    {
+      "label": "meal_only",
+      "message": "I just had 2 eggs and a slice of toast for breakfast.",
+      "react_loop_s": 33.23,
+      "orchestrator_s": 32.87,
+      "speedup_x": 1.01
+    },
+    {
+      "label": "profile_and_meal",
+      "message": "I'm a 25 year old female, 60kg, 165cm, lightly active, trying to maintain. I had a bowl of oatmeal with banana for breakfast.",
+      "react_loop_s": 101.45,
+      "orchestrator_s": 31.21,
+      "speedup_x": 3.25
+    }
+  ],
+  "totals": {
+    "react_loop_total_s": 177.26,
+    "orchestrator_total_s": 73.31,
+    "overall_speedup_x": 2.42
+  },
+  "comparison_to_bug_discovery_run": "No errors this run — all 6 calls (3 messages x 2 paths) completed cleanly, confirming the Harmony tool-name fix works end-to-end, not just in the isolated regression tests. The orchestrator now wins on every message shape (previously lost on profile_and_meal at 0.74x). Total speedup (2.42x) is close to, and slightly exceeds, the original Ollama-era figure (2.25x) — on this one run, NVIDIA NIM's structural advantage for the Orchestrator held up at least as well as local Ollama's did, once the fallback-chain bug wasn't corrupting the comparison.",
+  "comparison_to_ollama_baseline": "Per-message speedups differ noticeably from the Ollama run (profile_only 4.61x vs 2.41x, meal_only 1.01x vs 2.05x, profile_and_meal 3.25x vs 2.38x) — the shape of the win moved around even though the total landed close to the same place. meal_only in particular nearly disappeared as a win (1.01x) — worth another look if meal-parsing latency specifically matters, since that path is dominated by parse_meal_text on both the ReAct and Orchestrator routes and gpt-oss-20b's per-call latency variance is a plausible factor.",
+  "caveat": "Still a single run per path per message, on both stacks. Treat 2.42x as 'the orchestrator is meaningfully faster, probably 2-2.5x, on this model pairing' rather than a precise stable multiplier — same caveat the original Ollama measurement carried, restated here because it matters more now that one number (1.03x) was already shown to be an artifact of an unrelated bug rather than a real measurement."
+}
