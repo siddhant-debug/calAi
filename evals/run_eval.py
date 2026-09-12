@@ -66,12 +66,40 @@ opt-in (default 0 = skipped) so the default `python run_eval.py` invocation
 and its committed baseline (`report/latest.json`) are unaffected — the
 orchestrator check writes its own separate report,
 `report/orchestrator_parity.json`.
+
+ADR-006 per-model scoring gap: `config.LLM_MODELS` is a NVIDIA NIM
+fallback chain (originally copied from a reference project for
+availability, not accuracy, then trimmed from 4 to 2 models after 3 were
+found retired by NVIDIA — see `config.py`'s comment) — nobody had scored
+`parse_meal_text` against each model individually before this, only the
+chain as a whole (whichever model in the chain happens to answer
+first/successfully). Two additions close that gap:
+
+    python run_eval.py --model openai/gpt-oss-20b
+        Temporarily overrides the model(s) under test to just this one
+        model for the run (see `override_models`), and writes the combined
+        report to `report/openai_gpt-oss-20b.json` instead of
+        `report/latest.json` (sanitized model name, `--out` still wins if
+        passed explicitly). Does not affect the committed `report/latest.json`
+        baseline or any invocation that omits `--model`.
+
+    python run_eval.py --gate --baseline report/latest.json --tolerance-pct 5.0
+        After writing the combined report, compares every `_pct`-suffixed
+        field against the baseline report (see `compare_to_baseline`) and
+        exits with code 1 if any field regressed by more than
+        `--tolerance-pct` (default 5.0) — lower-is-better for
+        `calorie_mape_pct`, higher-is-better for everything else. Off by
+        default (exit code always 0 when `--gate` is omitted); this is what
+        lets `reviewer`/CI treat a run as pass/fail instead of eyeballing
+        JSON. Commonly combined with `--model` to gate one model's score
+        against the chain-wide baseline.
 """
 
 from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import contextlib
 import json
 import logging
 import sys
@@ -84,7 +112,9 @@ EVALS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = EVALS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from calai_backend.config import MODEL_NAME  # noqa: E402
+from calai_backend import config as calai_config  # noqa: E402
+from calai_backend.config import LLM_MODELS  # noqa: E402
+from calai_backend.providers import llm as llm_provider  # noqa: E402
 from calai_backend.services import agent_service  # noqa: E402
 from calai_backend.tools.meal_parser import parse_meal_text  # noqa: E402
 from evals.scorers.calorie_accuracy import score_calories  # noqa: E402
@@ -100,6 +130,100 @@ log = logging.getLogger("calai.evals")
 # entire run indefinitely (this happened once — a run silently stopped
 # making progress for 600s+ with no report ever written).
 PER_CALL_TIMEOUT_S = 180.0
+
+# report/latest.json is the committed ADR-006 baseline (whole-chain score);
+# compare_to_baseline's default target for --gate.
+DEFAULT_BASELINE_PATH = EVALS_DIR / "report" / "latest.json"
+
+# calorie_mape_pct is the one _pct field where lower is better (it's a mean
+# percent *error*, not an accuracy rate) — every other _pct field is a rate
+# where higher is better. compare_to_baseline needs this to know which
+# direction counts as a regression per field.
+_LOWER_IS_BETTER_PCT_FIELDS = {"calorie_mape_pct"}
+
+
+@contextlib.contextmanager
+def override_models(model_name: str):
+    """Temporarily restricts the model(s) under test to a single model, for
+    `--model MODEL_NAME`.
+
+    This needs THREE separate monkeypatch targets, not one, because
+    `calai_backend.providers.llm` and this module both did
+    `from calai_backend.config import LLM_MODELS` (a name-import that copies
+    the list *reference* into each importing module's own namespace at
+    import time), rather than `import calai_backend.config as config` +
+    `config.LLM_MODELS` (an attribute lookup that would see later
+    reassignment). `get_llm()`/`get_json_llm()` in providers/llm.py build
+    their fallback chain from the `LLM_MODELS` name already bound in that
+    module's own globals — patching `calai_backend.config.LLM_MODELS` alone
+    would not affect them. This module's own `LLM_MODELS` (used by
+    `aggregate()`'s `"model"` report field and the startup log line) is the
+    same situation. All three are patched here and restored in `finally` so
+    a `--model` run is fully isolated to this `with` block, mirroring the
+    `compose_response` monkeypatch pattern used in
+    `run_example_via_orchestrator`.
+    """
+    global LLM_MODELS
+    override = [model_name]
+    original_config = calai_config.LLM_MODELS
+    original_llm_provider = llm_provider.LLM_MODELS
+    original_run_eval = LLM_MODELS
+    calai_config.LLM_MODELS = override
+    llm_provider.LLM_MODELS = override
+    LLM_MODELS = override
+    try:
+        yield override
+    finally:
+        calai_config.LLM_MODELS = original_config
+        llm_provider.LLM_MODELS = original_llm_provider
+        LLM_MODELS = original_run_eval
+
+
+def compare_to_baseline(
+    new_report: dict[str, Any], baseline_path: Path, tolerance_pct: float = 5.0
+) -> tuple[bool, list[str]]:
+    """Compares every `_pct`-suffixed field present in both `new_report` and
+    the baseline report at `baseline_path`, and returns
+    (passed, [regression messages]).
+
+    A regression is a *decrease* beyond `tolerance_pct` for every `_pct`
+    field except `calorie_mape_pct`, where (since it's a mean percent
+    *error*, not an accuracy rate) a regression is an *increase* beyond
+    `tolerance_pct` — see `_LOWER_IS_BETTER_PCT_FIELDS`.
+
+    Never raises: a missing/unreadable baseline file, or a field missing
+    from either side, is silently skipped for that field/run rather than
+    treated as a failure — this function decides pass/fail on real
+    regressions only, not on baseline bookkeeping gaps.
+    """
+    if not baseline_path.exists():
+        return True, [f"No baseline found at {baseline_path} — skipping comparison."]
+    try:
+        baseline = json.loads(baseline_path.read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        return True, [f"Could not read/parse baseline at {baseline_path}: {e} — skipping comparison."]
+
+    messages: list[str] = []
+    for field, new_val in new_report.items():
+        if not field.endswith("_pct") or field not in baseline:
+            continue
+        old_val = baseline[field]
+        if new_val is None or old_val is None:
+            continue
+
+        if field in _LOWER_IS_BETTER_PCT_FIELDS:
+            delta = new_val - old_val  # increase = worse
+        else:
+            delta = old_val - new_val  # decrease = worse
+
+        if delta > tolerance_pct:
+            messages.append(
+                f"{field} regressed beyond tolerance ({tolerance_pct}pp): "
+                f"baseline={old_val}, new={new_val} (delta={delta:.1f}pp, "
+                f"{'lower' if field in _LOWER_IS_BETTER_PCT_FIELDS else 'higher'} is better)"
+            )
+
+    return (len(messages) == 0), messages
 
 
 def load_dataset(path: Path) -> list[dict[str, Any]]:
@@ -414,7 +538,7 @@ def aggregate(results: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "run_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "model": MODEL_NAME,
+        "model": LLM_MODELS,
         "n_examples": n_examples,
         "format_valid_pct": format_valid_pct,
         "item_precision_pct": item_precision_pct,
@@ -477,85 +601,140 @@ def main() -> None:
         help="Path for the orchestrator-parity report (default: report/orchestrator_parity.json). "
              "Only used when --orchestrator-subset > 0.",
     )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Score a single model instead of the whole ADR-006 fallback chain "
+             "(e.g. --model openai/gpt-oss-20b). Temporarily overrides "
+             "config.LLM_MODELS for the duration of this run only (see "
+             "override_models). When passed, the combined report defaults to "
+             "report/<model-name-sanitized>.json instead of report/latest.json "
+             "(--out still wins if given explicitly). Default None = unchanged "
+             "chain-wide behavior.",
+    )
+    parser.add_argument(
+        "--gate",
+        action="store_true",
+        default=False,
+        help="After writing the combined report, compare it to --baseline "
+             "(see compare_to_baseline) and exit 1 if any _pct field regressed "
+             "by more than --tolerance-pct. Default off — exit code is always 0 "
+             "when --gate is not passed.",
+    )
+    parser.add_argument(
+        "--baseline",
+        default=str(DEFAULT_BASELINE_PATH),
+        help="Baseline report path for --gate (default: report/latest.json).",
+    )
+    parser.add_argument(
+        "--tolerance-pct",
+        type=float,
+        default=5.0,
+        help="Percentage-point tolerance for --gate's regression check (default: 5.0).",
+    )
     args = parser.parse_args()
+
+    if args.model is not None and not args.model.strip():
+        raise SystemExit("--model was passed but is empty — pass a real model name or omit the flag.")
 
     dataset_arg = Path(args.dataset)
     dataset_paths = resolve_dataset_paths(dataset_arg)
-    combined_out = Path(args.out) if args.out else (EVALS_DIR / "report" / "latest.json")
+    if args.out:
+        combined_out = Path(args.out)
+    elif args.model:
+        sanitized = args.model.replace("/", "_").replace(":", "_")
+        combined_out = EVALS_DIR / "report" / f"{sanitized}.json"
+    else:
+        combined_out = EVALS_DIR / "report" / "latest.json"
 
-    log.info("Model under test: %s", MODEL_NAME)
-    log.info("Datasets: %s", [p.name for p in dataset_paths])
+    models_cm = override_models(args.model) if args.model else contextlib.nullcontext()
+    with models_cm:
+        log.info("Models under test (ADR-006 fallback chain): %s", LLM_MODELS)
+        log.info("Datasets: %s", [p.name for p in dataset_paths])
 
-    all_results: list[dict[str, Any]] = []
-    per_dataset_summary: dict[str, Any] = {}
-    t_all_start = time.perf_counter()
+        all_results: list[dict[str, Any]] = []
+        per_dataset_summary: dict[str, Any] = {}
+        t_all_start = time.perf_counter()
 
-    for dataset_path in dataset_paths:
-        results, elapsed = run_dataset(dataset_path)
-        # Step 6 (per dataset): score+pool this one dataset's examples.
-        report = aggregate(results)
-        report["total_wall_clock_s"] = round(elapsed, 1)
-        report["dataset"] = dataset_path.name
+        for dataset_path in dataset_paths:
+            results, elapsed = run_dataset(dataset_path)
+            # Step 6 (per dataset): score+pool this one dataset's examples.
+            report = aggregate(results)
+            report["total_wall_clock_s"] = round(elapsed, 1)
+            report["dataset"] = dataset_path.name
 
-        # Per-dataset report is only written when scoring multiple datasets
-        # (directory mode) — single-file mode writes only the combined report
-        # at --out, preserving the original single-dataset behavior.
-        if dataset_arg.is_dir():
-            per_report_path = EVALS_DIR / "report" / f"{dataset_path.stem}.json"
-            per_report_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(per_report_path, "w") as f:
-                json.dump(report, f, indent=2)
-            log.info("Wrote %s report to %s", dataset_path.stem, per_report_path)
+            # Per-dataset report is only written when scoring multiple datasets
+            # (directory mode) — single-file mode writes only the combined report
+            # at --out, preserving the original single-dataset behavior.
+            if dataset_arg.is_dir():
+                per_report_path = EVALS_DIR / "report" / f"{dataset_path.stem}.json"
+                per_report_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(per_report_path, "w") as f:
+                    json.dump(report, f, indent=2)
+                log.info("Wrote %s report to %s", dataset_path.stem, per_report_path)
 
-        per_dataset_summary[dataset_path.stem] = {
-            "n_examples": report["n_examples"],
-            "format_valid_pct": report["format_valid_pct"],
-            "item_precision_pct": report["item_precision_pct"],
-            "item_recall_pct": report["item_recall_pct"],
-            "calorie_mape_pct": report["calorie_mape_pct"],
-            "confidence_calibration_score_pct": report["confidence_calibration_score_pct"],
-            "wall_clock_s": report["total_wall_clock_s"],
-        }
-        # Step 7: also keep every raw per-example result so the combined
-        # (all-datasets) report below is pooled from real per-item data,
-        # not an average-of-averages of the per-dataset numbers.
-        all_results.extend(results)
+            per_dataset_summary[dataset_path.stem] = {
+                "n_examples": report["n_examples"],
+                "format_valid_pct": report["format_valid_pct"],
+                "item_precision_pct": report["item_precision_pct"],
+                "item_recall_pct": report["item_recall_pct"],
+                "calorie_mape_pct": report["calorie_mape_pct"],
+                "confidence_calibration_score_pct": report["confidence_calibration_score_pct"],
+                "wall_clock_s": report["total_wall_clock_s"],
+            }
+            # Step 7: also keep every raw per-example result so the combined
+            # (all-datasets) report below is pooled from real per-item data,
+            # not an average-of-averages of the per-dataset numbers.
+            all_results.extend(results)
 
-    total_elapsed_all = time.perf_counter() - t_all_start
+        total_elapsed_all = time.perf_counter() - t_all_start
 
-    combined_report = aggregate(all_results)
-    combined_report["total_wall_clock_s"] = round(total_elapsed_all, 1)
-    combined_report["datasets"] = [p.name for p in dataset_paths]
-    combined_report["per_dataset_summary"] = per_dataset_summary
+        combined_report = aggregate(all_results)
+        combined_report["total_wall_clock_s"] = round(total_elapsed_all, 1)
+        combined_report["datasets"] = [p.name for p in dataset_paths]
+        combined_report["per_dataset_summary"] = per_dataset_summary
 
-    combined_out.parent.mkdir(parents=True, exist_ok=True)
-    with open(combined_out, "w") as f:
-        json.dump(combined_report, f, indent=2)
+        combined_out.parent.mkdir(parents=True, exist_ok=True)
+        with open(combined_out, "w") as f:
+            json.dump(combined_report, f, indent=2)
 
-    log.info("Wrote combined report to %s", combined_out)
-    log.info(
-        "COMBINED format_valid=%.1f%%  precision=%.1f%%  recall=%.1f%%  mape=%s  calibration=%s  wall_clock=%.1fs",
-        combined_report["format_valid_pct"], combined_report["item_precision_pct"], combined_report["item_recall_pct"],
-        combined_report["calorie_mape_pct"], combined_report["confidence_calibration_score_pct"], total_elapsed_all,
-    )
-
-    if args.orchestrator_subset > 0:
+        log.info("Wrote combined report to %s", combined_out)
         log.info(
-            "Running orchestrator-parity check on first %d format-valid examples "
-            "(ADR-005 Known Limitations #2)...", args.orchestrator_subset,
+            "COMBINED format_valid=%.1f%%  precision=%.1f%%  recall=%.1f%%  mape=%s  calibration=%s  wall_clock=%.1fs",
+            combined_report["format_valid_pct"], combined_report["item_precision_pct"], combined_report["item_recall_pct"],
+            combined_report["calorie_mape_pct"], combined_report["confidence_calibration_score_pct"], total_elapsed_all,
         )
-        parity_report = run_orchestrator_parity_check(all_results, args.orchestrator_subset)
-        orchestrator_out = (
-            Path(args.orchestrator_report) if args.orchestrator_report
-            else (EVALS_DIR / "report" / "orchestrator_parity.json")
-        )
-        orchestrator_out.parent.mkdir(parents=True, exist_ok=True)
-        with open(orchestrator_out, "w") as f:
-            json.dump(parity_report, f, indent=2)
-        log.info(
-            "Wrote orchestrator-parity report to %s  (%d/%d format-valid through orchestrator)",
-            orchestrator_out, parity_report["n_orchestrator_format_valid"], parity_report["n_examples_checked"],
-        )
+
+        if args.gate:
+            baseline_path = Path(args.baseline)
+            passed, messages = compare_to_baseline(combined_report, baseline_path, args.tolerance_pct)
+            for msg in messages:
+                if passed:
+                    log.info("[--gate] %s", msg)
+                else:
+                    log.error("[--gate] %s", msg)
+            if not passed:
+                log.error("[--gate] FAILED: %d regression(s) beyond tolerance=%.1fpp vs %s", len(messages), args.tolerance_pct, baseline_path)
+                sys.exit(1)
+            log.info("[--gate] PASSED: no regressions beyond tolerance=%.1fpp vs %s", args.tolerance_pct, baseline_path)
+
+        if args.orchestrator_subset > 0:
+            log.info(
+                "Running orchestrator-parity check on first %d format-valid examples "
+                "(ADR-005 Known Limitations #2)...", args.orchestrator_subset,
+            )
+            parity_report = run_orchestrator_parity_check(all_results, args.orchestrator_subset)
+            orchestrator_out = (
+                Path(args.orchestrator_report) if args.orchestrator_report
+                else (EVALS_DIR / "report" / "orchestrator_parity.json")
+            )
+            orchestrator_out.parent.mkdir(parents=True, exist_ok=True)
+            with open(orchestrator_out, "w") as f:
+                json.dump(parity_report, f, indent=2)
+            log.info(
+                "Wrote orchestrator-parity report to %s  (%d/%d format-valid through orchestrator)",
+                orchestrator_out, parity_report["n_orchestrator_format_valid"], parity_report["n_examples_checked"],
+            )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 python-dotenv
 langchain
 langchain-core
-langchain-ollama
+langchain-nvidia-ai-endpoints==1.4.3
 langchain-community
 tavily-python
 pydantic

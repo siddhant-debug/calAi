@@ -6,10 +6,10 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from pydantic import BaseModel
 
-from calai_backend.config import MAX_STEPS, MODEL_NAME, USE_ORCHESTRATOR
+from calai_backend.config import MAX_STEPS, USE_ORCHESTRATOR
 from calai_backend.logging_config import bind_correlation_id, get_logger
 from calai_backend.prompts.calai_prompt import SYSTEM_PROMPT
-from calai_backend.providers.llm import get_json_llm
+from calai_backend.providers.llm import get_json_llm, get_llm
 from calai_backend.schemas import AgentResponse, CalcRequest, CalcResponse, Intent, ParsedRequest
 from calai_backend.services.calc_pipeline import run_calc_pipeline
 from calai_backend.services.llm_call import llm_call
@@ -95,7 +95,7 @@ class _ExtractedFieldsSchema(BaseModel):
     intent: str | None = None
 
 
-def extract_request_fields(message: str, llm: BaseChatModel) -> ParsedRequest:
+def extract_request_fields(message: str, llm: BaseChatModel | None) -> ParsedRequest:
     """Turn a free-text /api/agent message into structured request fields.
 
     One LLM call (ADR-003's `extract_request_fields`), replacing the ReAct
@@ -119,7 +119,7 @@ def extract_request_fields(message: str, llm: BaseChatModel) -> ParsedRequest:
     prompt = EXTRACTION_PROMPT.format(message=safe_message)
     json_llm = get_json_llm()
 
-    log.debug("[extract_request_fields] calling llm_call model=%s", MODEL_NAME)
+    log.debug("[extract_request_fields] calling llm_call")
     call_result = llm_call(
         name="extract_request_fields", prompt=prompt, schema=_ExtractedFieldsSchema, llm=json_llm,
     )
@@ -222,7 +222,7 @@ def compose_response(calc: CalcResponse | None, meal: dict | None) -> str:
 # out of scope here — ADR-003/ADR-001 still haven't implemented it.
 # ---------------------------------------------------------------------------
 
-def _run_agent_orchestrator(message: str, llm: BaseChatModel) -> AgentResponse:
+def _run_agent_orchestrator(message: str, llm: BaseChatModel | None) -> AgentResponse:
     # ADR-005 contract 6: bind one correlation id for this request's entire
     # call tree (generates a UUID4 since routes.py doesn't yet supply one).
     # Purely additive infra — does not touch the presence-based dispatch
@@ -236,8 +236,12 @@ def _run_agent_orchestrator(message: str, llm: BaseChatModel) -> AgentResponse:
         # internally (no internal try/except of their own, unlike the ReAct
         # loop's llm_with_tools.invoke calls). Same httpx/ValueError ->
         # HTTPException translation as _run_agent_react_loop /
-        # routes.py's /api/parse-meal handler, applied here so Ollama
+        # routes.py's /api/parse-meal handler, applied here so NIM
         # outages or malformed-LLM-output don't surface as a bare 500.
+        # ADR-006: get_llm()/get_json_llm() now wrap a retry+fallback
+        # chain (services/agent_service.py imports get_llm) — a request only
+        # reaches these handlers if every model in LLM_MODELS has already
+        # exhausted its retries, so these are genuine full-chain failures.
         try:
             parsed_request = extract_request_fields(message, llm)
 
@@ -270,25 +274,25 @@ def _run_agent_orchestrator(message: str, llm: BaseChatModel) -> AgentResponse:
                 meal = parse_meal(message, parsed_request.meal_type or "snack")
                 log.info("[orchestrator] MealParseAgent ran in %.1fms", (time.perf_counter() - t0) * 1000)
         except httpx.ConnectError:
-            log.error("[orchestrator] Cannot connect to Ollama")
-            raise HTTPException(status_code=503, detail="Cannot connect to Ollama. Run `ollama serve`.")
+            log.error("[orchestrator] Cannot connect to NVIDIA NIM")
+            raise HTTPException(status_code=503, detail="Cannot connect to NVIDIA NIM (integrate.api.nvidia.com).")
         except httpx.ReadError:
-            log.error("[orchestrator] Ollama dropped connection — model '%s' may not be downloaded", MODEL_NAME)
+            log.error("[orchestrator] NVIDIA NIM dropped the connection")
             raise HTTPException(
                 status_code=503,
-                detail=f"Ollama dropped the connection — model '{MODEL_NAME}' may not be downloaded.",
+                detail="NVIDIA NIM dropped the connection while all fallback models were exhausted.",
             )
         except httpx.HTTPStatusError as e:
-            log.error("[orchestrator] Ollama HTTP %d: %s", e.response.status_code, e.response.text[:200])
+            log.error("[orchestrator] NVIDIA NIM HTTP %d: %s", e.response.status_code, e.response.text[:200])
             raise HTTPException(
                 status_code=502,
-                detail=f"Ollama returned HTTP {e.response.status_code}: {e.response.text[:200]}",
+                detail=f"NVIDIA NIM returned HTTP {e.response.status_code}: {e.response.text[:200]}",
             )
         except httpx.TimeoutException:
-            log.error("[orchestrator] Ollama timed out")
+            log.error("[orchestrator] NVIDIA NIM timed out")
             raise HTTPException(
                 status_code=504,
-                detail=f"Ollama timed out — model '{MODEL_NAME}' may be overloaded.",
+                detail="NVIDIA NIM timed out on every model in the fallback chain.",
             )
         except ValueError as e:
             log.error("[orchestrator] Validation error: %s", e)
@@ -316,7 +320,7 @@ def _run_agent_orchestrator(message: str, llm: BaseChatModel) -> AgentResponse:
         return AgentResponse(response=response_text, iterations_used=iterations_used)
 
 
-def run_agent(message: str, llm: BaseChatModel) -> AgentResponse:
+def run_agent(message: str, llm: BaseChatModel | None) -> AgentResponse:
     """Public entry point for /api/agent. Signature is unchanged (ADR-003).
 
     Routes to the new Orchestrator by default; set USE_ORCHESTRATOR=false to
@@ -335,7 +339,7 @@ def run_agent(message: str, llm: BaseChatModel) -> AgentResponse:
 # ADR-003 Action Item 8, not authorized in this unit.
 # ---------------------------------------------------------------------------
 
-def _run_agent_react_loop(message: str, llm: BaseChatModel) -> AgentResponse:
+def _run_agent_react_loop(message: str, llm: BaseChatModel | None) -> AgentResponse:
     t_start = time.perf_counter()
     log.info("=" * 60)
     log.info("[run_agent] Input: %s", message)
@@ -343,7 +347,15 @@ def _run_agent_react_loop(message: str, llm: BaseChatModel) -> AgentResponse:
 
     tools = get_tools()
     tools_dict = get_dict()
-    llm_with_tools = llm.bind_tools(tools)
+    # ADR-006 ordering constraint: `llm` (whatever routes.py's DI passed in)
+    # is not used to .bind_tools() directly — RunnableRetry/
+    # RunnableWithFallbacks (what providers/llm.py's get_llm() now returns)
+    # are not BaseChatModel and have no .bind_tools(). Rebuild via
+    # get_llm(tools=tools), which binds tools on each raw client BEFORE
+    # retry/fallback wrapping. The `llm` parameter is kept for signature
+    # parity with _run_agent_orchestrator and existing callers/tests.
+    del llm
+    llm_with_tools = get_llm(tools=tools)
 
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
@@ -357,25 +369,25 @@ def _run_agent_react_loop(message: str, llm: BaseChatModel) -> AgentResponse:
         try:
             ai_message = llm_with_tools.invoke(messages)
         except httpx.ConnectError:
-            log.error("[ERROR] Cannot connect to Ollama")
-            raise HTTPException(status_code=503, detail="Cannot connect to Ollama. Run `ollama serve`.")
+            log.error("[ERROR] Cannot connect to NVIDIA NIM")
+            raise HTTPException(status_code=503, detail="Cannot connect to NVIDIA NIM (integrate.api.nvidia.com).")
         except httpx.ReadError:
-            log.error("[ERROR] Ollama dropped connection — model '%s' may not be downloaded", MODEL_NAME)
+            log.error("[ERROR] NVIDIA NIM dropped the connection")
             raise HTTPException(
                 status_code=503,
-                detail=f"Ollama dropped the connection — model '{MODEL_NAME}' may not be downloaded.",
+                detail="NVIDIA NIM dropped the connection while all fallback models were exhausted.",
             )
         except httpx.HTTPStatusError as e:
-            log.error("[ERROR] Ollama HTTP %d: %s", e.response.status_code, e.response.text[:200])
+            log.error("[ERROR] NVIDIA NIM HTTP %d: %s", e.response.status_code, e.response.text[:200])
             raise HTTPException(
                 status_code=502,
-                detail=f"Ollama returned HTTP {e.response.status_code}: {e.response.text[:200]}",
+                detail=f"NVIDIA NIM returned HTTP {e.response.status_code}: {e.response.text[:200]}",
             )
         except httpx.TimeoutException:
-            log.error("[ERROR] Ollama timed out on iteration %d", iteration)
+            log.error("[ERROR] NVIDIA NIM timed out on iteration %d", iteration)
             raise HTTPException(
                 status_code=504,
-                detail=f"Ollama timed out — model '{MODEL_NAME}' may be overloaded.",
+                detail="NVIDIA NIM timed out on every model in the fallback chain.",
             )
 
         llm_ms = (time.perf_counter() - t0) * 1000
@@ -400,16 +412,16 @@ def _run_agent_react_loop(message: str, llm: BaseChatModel) -> AgentResponse:
             try:
                 observation = tool_fn.invoke(tool_args)
             except (httpx.ConnectError, httpx.ReadError):
-                raise HTTPException(status_code=503, detail="Ollama is not reachable during tool call.")
+                raise HTTPException(status_code=503, detail="NVIDIA NIM is not reachable during tool call.")
             except httpx.HTTPStatusError as e:
                 raise HTTPException(
                     status_code=502,
-                    detail=f"Ollama returned HTTP {e.response.status_code}: {e.response.text[:200]}",
+                    detail=f"NVIDIA NIM returned HTTP {e.response.status_code}: {e.response.text[:200]}",
                 )
             except httpx.TimeoutException:
                 raise HTTPException(
                     status_code=504,
-                    detail=f"Ollama timed out during tool call — model '{MODEL_NAME}' may be overloaded.",
+                    detail="NVIDIA NIM timed out on every model in the fallback chain during tool call.",
                 )
             except ValueError as e:
                 raise HTTPException(status_code=422, detail=str(e))

@@ -41,8 +41,8 @@ What this does, in order:
 Usage (from repo root):
     python evals/latency_comparison.py
 
-Requires a live Ollama instance with MODEL_NAME pulled (confirm via
-`curl localhost:11434/api/tags`). Up to 6 real Ollama round-trips total
+ADR-006: requires a real NVIDIA_API_KEY (NVIDIA NIM) set in the
+environment. Up to 6 real NIM round-trips total
 (3 messages x 2 paths); the ReAct loop path can take up to MAX_STEPS=8
 LLM+tool iterations per call if the model doesn't converge quickly, so a
 full run can take several minutes. This is expected to be run by `reviewer`
@@ -84,7 +84,7 @@ EVALS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = EVALS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from calai_backend.config import MODEL_NAME  # noqa: E402
+from calai_backend.config import LLM_MODELS  # noqa: E402
 from calai_backend.providers.llm import get_llm  # noqa: E402
 from calai_backend.services.agent_service import (  # noqa: E402
     _run_agent_orchestrator,
@@ -163,7 +163,7 @@ def print_summary(records: list[dict[str, Any]]) -> None:
         by_label.setdefault(r["label"], {})[r["path"]] = r
 
     print("\n" + "=" * 78)
-    print(f"LATENCY COMPARISON — model={MODEL_NAME}")
+    print(f"LATENCY COMPARISON — models={LLM_MODELS}")
     print("=" * 78)
     header = f"{'message':<20} {'react_loop_s':>14} {'orchestrator_s':>16} {'speedup':>10}"
     print(header)
@@ -231,7 +231,7 @@ def print_meal_only_summary(timings: list[float]) -> None:
     predicted_1_8x_target_s = MEAL_ONLY_BASELINE_S / 1.8
 
     print("\n" + "=" * 78)
-    print(f"MEAL-ONLY LATENCY CHECK (ADR-005 vs NOTES 1.8x prediction) — model={MODEL_NAME}")
+    print(f"MEAL-ONLY LATENCY CHECK (ADR-005 vs NOTES 1.8x prediction) — models={LLM_MODELS}")
     print("=" * 78)
     print(f"Runs: {[f'{t:.2f}s' for t in timings]}")
     print(f"Mean:   {mean_s:.2f}s")
@@ -252,7 +252,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    print(f"Model under test: {MODEL_NAME}")
+    print(f"Models under test (ADR-006 fallback chain): {LLM_MODELS}")
 
     if args.meal_only_check > 0:
         print(f"Meal-only repeated check: {args.meal_only_check} runs")

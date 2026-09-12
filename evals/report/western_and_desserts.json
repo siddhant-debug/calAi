@@ -1,0 +1,233 @@
+{
+  "run_at": "2026-09-12T15:21:51Z",
+  "model": [
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+  ],
+  "n_examples": 8,
+  "format_valid_pct": 100.0,
+  "item_precision_pct": 81.8,
+  "item_recall_pct": 100.0,
+  "calorie_mape_pct": 18.2,
+  "confidence_calibration_score_pct": 33.3,
+  "confidence_calibration_detail": {
+    "error_rate_by_confidence": {
+      "low": 0.0,
+      "medium": 0.4,
+      "high": 0.3333333333333333
+    },
+    "n_items_by_confidence": {
+      "low": 1,
+      "medium": 5,
+      "high": 3
+    },
+    "n_unlabeled_or_unmatched": 0,
+    "calibration_score": 33.3,
+    "note": null
+  },
+  "failures": [
+    {
+      "input": "a grilled cheese sandwich",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a grilled cheese sandwich",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "grilled cheese sandwich",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              300,
+              400
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          400
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "white bread",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 160.0,
+            "protein_g": 6.0,
+            "carbs_g": 30.0,
+            "fat_g": 2.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "cheddar cheese",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 220.0,
+            "protein_g": 14.0,
+            "carbs_g": 2.0,
+            "fat_g": 20.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 380.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "white bread"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "grilled cheese sandwich",
+          "expected_range": [
+            300,
+            400
+          ],
+          "got_kcal": 220.0,
+          "in_range": false,
+          "pct_error": 37.1
+        }
+      ]
+    },
+    {
+      "input": "a bowl of pasta with tomato sauce",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a bowl of pasta with tomato sauce",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "pasta with tomato sauce",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              350,
+              500
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          350,
+          500
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "cooked pasta",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 221.0,
+            "protein_g": 8.0,
+            "carbs_g": 43.0,
+            "fat_g": 1.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "tomato sauce",
+            "quantity": 0.5,
+            "unit": "cup",
+            "calories_kcal": 30.0,
+            "protein_g": 1.0,
+            "carbs_g": 6.0,
+            "fat_g": 0.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 251.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "tomato sauce"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "pasta with tomato sauce",
+          "expected_range": [
+            350,
+            500
+          ],
+          "got_kcal": 221.0,
+          "in_range": false,
+          "pct_error": 48.0
+        }
+      ]
+    },
+    {
+      "input": "a veggie burger with fries",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a veggie burger with fries",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "veggie burger",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              350,
+              500
+            ]
+          },
+          {
+            "name": "fries",
+            "quantity": 1,
+            "unit": "serving",
+            "calories_kcal_range": [
+              300,
+              400
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          650,
+          900
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "veggie burger",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 300.0,
+            "protein_g": 15.0,
+            "carbs_g": 35.0,
+            "fat_g": 12.0,
+            "confidence": "high"
+          },
+          {
+            "name": "fries",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 400.0,
+            "protein_g": 5.0,
+            "carbs_g": 45.0,
+            "fat_g": 20.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 700.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "veggie burger",
+          "expected_range": [
+            350,
+            500
+          ],
+          "got_kcal": 300.0,
+          "in_range": false,
+          "pct_error": 29.4
+        }
+      ]
+    }
+  ],
+  "total_wall_clock_s": 93.7,
+  "dataset": "western_and_desserts.jsonl"
+}

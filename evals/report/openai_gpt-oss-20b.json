@@ -1,0 +1,2475 @@
+{
+  "run_at": "2026-09-12T15:04:21Z",
+  "model": [
+    "openai/gpt-oss-20b"
+  ],
+  "n_examples": 70,
+  "format_valid_pct": 100.0,
+  "item_precision_pct": 92.0,
+  "item_recall_pct": 98.1,
+  "calorie_mape_pct": 25.2,
+  "confidence_calibration_score_pct": 55.2,
+  "confidence_calibration_detail": {
+    "error_rate_by_confidence": {
+      "low": 0.38461538461538464,
+      "medium": 0.4,
+      "high": 0.28
+    },
+    "n_items_by_confidence": {
+      "low": 13,
+      "medium": 65,
+      "high": 25
+    },
+    "n_unlabeled_or_unmatched": 0,
+    "calibration_score": 55.2,
+    "note": null
+  },
+  "failures": [
+    {
+      "input": "2 rotis with dal",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "2 rotis with dal",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "roti",
+            "quantity": 2,
+            "unit": "whole",
+            "calories_kcal_range": [
+              160,
+              200
+            ]
+          },
+          {
+            "name": "dal",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          310,
+          420
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "roti",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 200.0,
+            "protein_g": 6.0,
+            "carbs_g": 40.0,
+            "fat_g": 1.0,
+            "confidence": "high"
+          },
+          {
+            "name": "dal",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 230.0,
+            "protein_g": 15.0,
+            "carbs_g": 40.0,
+            "fat_g": 1.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 430.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "dal",
+          "expected_range": [
+            150,
+            220
+          ],
+          "got_kcal": 230.0,
+          "in_range": false,
+          "pct_error": 24.3
+        }
+      ]
+    },
+    {
+      "input": "a bowl of chicken biryani",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a bowl of chicken biryani",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "chicken biryani",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              400,
+              600
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          400,
+          600
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "chicken biryani",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 380.0,
+            "protein_g": 18.0,
+            "carbs_g": 38.0,
+            "fat_g": 12.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 380.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "chicken biryani",
+          "expected_range": [
+            400,
+            600
+          ],
+          "got_kcal": 380.0,
+          "in_range": false,
+          "pct_error": 24.0
+        }
+      ]
+    },
+    {
+      "input": "grilled chicken salad",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "grilled chicken salad",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "grilled chicken salad",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              300,
+              450
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          450
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "grilled chicken breast",
+            "quantity": 4.0,
+            "unit": "oz",
+            "calories_kcal": 186.0,
+            "protein_g": 35.0,
+            "carbs_g": 0.0,
+            "fat_g": 4.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "mixed greens",
+            "quantity": 2.0,
+            "unit": "cups",
+            "calories_kcal": 7.0,
+            "protein_g": 0.7,
+            "carbs_g": 1.4,
+            "fat_g": 0.1,
+            "confidence": "medium"
+          },
+          {
+            "name": "olive oil dressing",
+            "quantity": 1.0,
+            "unit": "tbsp",
+            "calories_kcal": 120.0,
+            "protein_g": 0.0,
+            "carbs_g": 0.0,
+            "fat_g": 14.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 313.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "mixed greens",
+        "olive oil dressing"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "grilled chicken salad",
+          "expected_range": [
+            300,
+            450
+          ],
+          "got_kcal": 186.0,
+          "in_range": false,
+          "pct_error": 50.4
+        }
+      ]
+    },
+    {
+      "input": "2 boiled eggs and a banana",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "2 boiled eggs and a banana",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "boiled egg",
+            "quantity": 2,
+            "unit": "whole",
+            "calories_kcal_range": [
+              140,
+              170
+            ]
+          },
+          {
+            "name": "banana",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              90,
+              120
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          230,
+          290
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "boiled egg",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 100.0,
+            "protein_g": 12.0,
+            "carbs_g": 0.8,
+            "fat_g": 9.0,
+            "confidence": "high"
+          },
+          {
+            "name": "banana",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 105.0,
+            "protein_g": 1.3,
+            "carbs_g": 27.0,
+            "fat_g": 0.4,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 205.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "boiled egg",
+          "expected_range": [
+            140,
+            170
+          ],
+          "got_kcal": 100.0,
+          "in_range": false,
+          "pct_error": 35.5
+        }
+      ]
+    },
+    {
+      "input": "a plate of mixed vegetables with 2 rotis and dal",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a plate of mixed vegetables with 2 rotis and dal",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "mixed vegetables",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              120,
+              200
+            ]
+          },
+          {
+            "name": "roti",
+            "quantity": 2,
+            "unit": "whole",
+            "calories_kcal_range": [
+              160,
+              200
+            ]
+          },
+          {
+            "name": "dal",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          430,
+          620
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "mixed vegetables",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 80.0,
+            "protein_g": 3.0,
+            "carbs_g": 15.0,
+            "fat_g": 0.5,
+            "confidence": "medium"
+          },
+          {
+            "name": "roti",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 200.0,
+            "protein_g": 6.0,
+            "carbs_g": 40.0,
+            "fat_g": 2.0,
+            "confidence": "high"
+          },
+          {
+            "name": "dal",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 230.0,
+            "protein_g": 15.0,
+            "carbs_g": 40.0,
+            "fat_g": 1.0,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 510.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "mixed vegetables",
+          "expected_range": [
+            120,
+            200
+          ],
+          "got_kcal": 80.0,
+          "in_range": false,
+          "pct_error": 50.0
+        },
+        {
+          "name": "dal",
+          "expected_range": [
+            150,
+            220
+          ],
+          "got_kcal": 230.0,
+          "in_range": false,
+          "pct_error": 24.3
+        }
+      ]
+    },
+    {
+      "input": "a bowl of mixed fruit with yogurt",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a bowl of mixed fruit with yogurt",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "mixed fruit",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              80,
+              140
+            ]
+          },
+          {
+            "name": "yogurt",
+            "quantity": 0.5,
+            "unit": "cup",
+            "calories_kcal_range": [
+              70,
+              90
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          150,
+          230
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "mixed fruit",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 80.0,
+            "protein_g": 1.0,
+            "carbs_g": 20.0,
+            "fat_g": 0.5,
+            "confidence": "medium"
+          },
+          {
+            "name": "plain low\u2011fat yogurt",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 150.0,
+            "protein_g": 12.0,
+            "carbs_g": 20.0,
+            "fat_g": 4.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 230.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "yogurt",
+          "expected_range": [
+            70,
+            90
+          ],
+          "got_kcal": 150.0,
+          "in_range": false,
+          "pct_error": 87.5
+        }
+      ]
+    },
+    {
+      "input": "aloo paratha with curd",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "aloo paratha with curd",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "aloo paratha",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              200,
+              300
+            ]
+          },
+          {
+            "name": "curd",
+            "quantity": 0.5,
+            "unit": "cup",
+            "calories_kcal_range": [
+              70,
+              90
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          270,
+          390
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "aloo paratha",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 450.0,
+            "protein_g": 8.0,
+            "carbs_g": 55.0,
+            "fat_g": 14.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "curd",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 150.0,
+            "protein_g": 8.0,
+            "carbs_g": 12.0,
+            "fat_g": 8.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 600.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "aloo paratha",
+          "expected_range": [
+            200,
+            300
+          ],
+          "got_kcal": 450.0,
+          "in_range": false,
+          "pct_error": 80.0
+        },
+        {
+          "name": "curd",
+          "expected_range": [
+            70,
+            90
+          ],
+          "got_kcal": 150.0,
+          "in_range": false,
+          "pct_error": 87.5
+        }
+      ]
+    },
+    {
+      "input": "rajma chawal",
+      "reason": "missed_items",
+      "expected": {
+        "input": "rajma chawal",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "rajma",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              280
+            ]
+          },
+          {
+            "name": "chawal",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          400,
+          500
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "rajma (cooked kidney beans)",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 225.0,
+            "protein_g": 15.0,
+            "carbs_g": 40.0,
+            "fat_g": 1.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "rice (cooked white rice)",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 205.0,
+            "protein_g": 4.0,
+            "carbs_g": 45.0,
+            "fat_g": 0.4,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 430.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [
+        "chawal"
+      ],
+      "unmatched_got": [
+        "rice (cooked white rice)"
+      ],
+      "out_of_range_items": []
+    },
+    {
+      "input": "a plate of chole bhature",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a plate of chole bhature",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "chole",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              300
+            ]
+          },
+          {
+            "name": "bhature",
+            "quantity": 2,
+            "unit": "piece",
+            "calories_kcal_range": [
+              500,
+              600
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          700,
+          900
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "chole (spiced chickpeas)",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 300.0,
+            "protein_g": 15.0,
+            "carbs_g": 45.0,
+            "fat_g": 6.0,
+            "confidence": "low"
+          },
+          {
+            "name": "bhature (deep-fried bread)",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 300.0,
+            "protein_g": 6.0,
+            "carbs_g": 45.0,
+            "fat_g": 12.0,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 600.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "bhature",
+          "expected_range": [
+            500,
+            600
+          ],
+          "got_kcal": 300.0,
+          "in_range": false,
+          "pct_error": 45.5
+        }
+      ]
+    },
+    {
+      "input": "butter chicken with naan",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "butter chicken with naan",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "butter chicken",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              350,
+              500
+            ]
+          },
+          {
+            "name": "naan",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              260,
+              320
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          610,
+          820
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "butter chicken",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 350.0,
+            "protein_g": 20.0,
+            "carbs_g": 20.0,
+            "fat_g": 20.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "naan",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 200.0,
+            "protein_g": 5.0,
+            "carbs_g": 35.0,
+            "fat_g": 5.0,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 550.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "naan",
+          "expected_range": [
+            260,
+            320
+          ],
+          "got_kcal": 200.0,
+          "in_range": false,
+          "pct_error": 31.0
+        }
+      ]
+    },
+    {
+      "input": "paneer tikka with roti",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "paneer tikka with roti",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "paneer tikka",
+            "quantity": 1,
+            "unit": "serving",
+            "calories_kcal_range": [
+              250,
+              350
+            ]
+          },
+          {
+            "name": "roti",
+            "quantity": 2,
+            "unit": "whole",
+            "calories_kcal_range": [
+              160,
+              200
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          410,
+          550
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "paneer tikka",
+            "quantity": 100.0,
+            "unit": "g",
+            "calories_kcal": 300.0,
+            "protein_g": 18.0,
+            "carbs_g": 5.0,
+            "fat_g": 20.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "roti",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 140.0,
+            "protein_g": 4.0,
+            "carbs_g": 28.0,
+            "fat_g": 1.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 440.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "roti",
+          "expected_range": [
+            160,
+            200
+          ],
+          "got_kcal": 140.0,
+          "in_range": false,
+          "pct_error": 22.2
+        }
+      ]
+    },
+    {
+      "input": "kadhi chawal",
+      "reason": "missed_items",
+      "expected": {
+        "input": "kadhi chawal",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "kadhi",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          },
+          {
+            "name": "chawal",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          350,
+          440
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "kadhi",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 200.0,
+            "protein_g": 10.0,
+            "carbs_g": 15.0,
+            "fat_g": 10.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "rice",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 200.0,
+            "protein_g": 4.0,
+            "carbs_g": 45.0,
+            "fat_g": 0.4,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 400.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [
+        "chawal"
+      ],
+      "unmatched_got": [
+        "rice"
+      ],
+      "out_of_range_items": []
+    },
+    {
+      "input": "a plate of pav bhaji",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a plate of pav bhaji",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "pav bhaji",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              400,
+              550
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          400,
+          550
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "bhaji",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 200.0,
+            "protein_g": 4.0,
+            "carbs_g": 35.0,
+            "fat_g": 5.0,
+            "confidence": "low"
+          },
+          {
+            "name": "pav",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 400.0,
+            "protein_g": 10.0,
+            "carbs_g": 70.0,
+            "fat_g": 10.0,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 600.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "pav"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "pav bhaji",
+          "expected_range": [
+            400,
+            550
+          ],
+          "got_kcal": 200.0,
+          "in_range": false,
+          "pct_error": 57.9
+        }
+      ]
+    },
+    {
+      "input": "malai kofta with naan",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "malai kofta with naan",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "malai kofta",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              350,
+              500
+            ]
+          },
+          {
+            "name": "naan",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              260,
+              320
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          610,
+          820
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "malai kofta",
+            "quantity": 4.0,
+            "unit": "pieces",
+            "calories_kcal": 600.0,
+            "protein_g": 20.0,
+            "carbs_g": 45.0,
+            "fat_g": 35.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "naan",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 260.0,
+            "protein_g": 8.0,
+            "carbs_g": 45.0,
+            "fat_g": 6.0,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 860.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "malai kofta",
+          "expected_range": [
+            350,
+            500
+          ],
+          "got_kcal": 600.0,
+          "in_range": false,
+          "pct_error": 41.2
+        }
+      ]
+    },
+    {
+      "input": "matar paneer with 2 phulkas",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "matar paneer with 2 phulkas",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "matar paneer",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              250,
+              350
+            ]
+          },
+          {
+            "name": "phulka",
+            "quantity": 2,
+            "unit": "whole",
+            "calories_kcal_range": [
+              140,
+              180
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          390,
+          530
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "matar paneer",
+            "quantity": 1.0,
+            "unit": "serving",
+            "calories_kcal": 250.0,
+            "protein_g": 15.0,
+            "carbs_g": 15.0,
+            "fat_g": 15.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "phulka",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 200.0,
+            "protein_g": 6.0,
+            "carbs_g": 40.0,
+            "fat_g": 2.0,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 450.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "phulka",
+          "expected_range": [
+            140,
+            180
+          ],
+          "got_kcal": 200.0,
+          "in_range": false,
+          "pct_error": 25.0
+        }
+      ]
+    },
+    {
+      "input": "stuffed kulcha with chole",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "stuffed kulcha with chole",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "kulcha",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              200,
+              280
+            ]
+          },
+          {
+            "name": "chole",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              200,
+              300
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          400,
+          580
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "stuffed kulcha",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 300.0,
+            "protein_g": 10.0,
+            "carbs_g": 55.0,
+            "fat_g": 7.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "chole",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 350.0,
+            "protein_g": 15.0,
+            "carbs_g": 50.0,
+            "fat_g": 10.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 650.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "kulcha",
+          "expected_range": [
+            200,
+            280
+          ],
+          "got_kcal": 300.0,
+          "in_range": false,
+          "pct_error": 25.0
+        },
+        {
+          "name": "chole",
+          "expected_range": [
+            200,
+            300
+          ],
+          "got_kcal": 350.0,
+          "in_range": false,
+          "pct_error": 40.0
+        }
+      ]
+    },
+    {
+      "input": "some paneer bhurji with a roti",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "some paneer bhurji with a roti",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "paneer bhurji",
+            "quantity": 1,
+            "unit": "serving",
+            "calories_kcal_range": [
+              200,
+              280
+            ]
+          },
+          {
+            "name": "roti",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              80,
+              100
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          280,
+          380
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "paneer bhurji",
+            "quantity": 200.0,
+            "unit": "g",
+            "calories_kcal": 300.0,
+            "protein_g": 15.0,
+            "carbs_g": 10.0,
+            "fat_g": 20.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "roti",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 120.0,
+            "protein_g": 3.0,
+            "carbs_g": 24.0,
+            "fat_g": 1.0,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 420.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "paneer bhurji",
+          "expected_range": [
+            200,
+            280
+          ],
+          "got_kcal": 300.0,
+          "in_range": false,
+          "pct_error": 25.0
+        },
+        {
+          "name": "roti",
+          "expected_range": [
+            80,
+            100
+          ],
+          "got_kcal": 120.0,
+          "in_range": false,
+          "pct_error": 33.3
+        }
+      ]
+    },
+    {
+      "input": "a samosa",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a samosa",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "samosa",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              130,
+              250
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          130,
+          250
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "samosa",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 120.0,
+            "protein_g": 2.0,
+            "carbs_g": 15.0,
+            "fat_g": 7.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 120.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "samosa",
+          "expected_range": [
+            130,
+            250
+          ],
+          "got_kcal": 120.0,
+          "in_range": false,
+          "pct_error": 36.8
+        }
+      ]
+    },
+    {
+      "input": "a plate of pakora",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a plate of pakora",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "pakora",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              250,
+              400
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          250,
+          400
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "pakora",
+            "quantity": 6.0,
+            "unit": "piece",
+            "calories_kcal": 720.0,
+            "protein_g": 18.0,
+            "carbs_g": 72.0,
+            "fat_g": 36.0,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 720.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "pakora",
+          "expected_range": [
+            250,
+            400
+          ],
+          "got_kcal": 720.0,
+          "in_range": false,
+          "pct_error": 121.5
+        }
+      ]
+    },
+    {
+      "input": "a handful of roasted peanuts",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a handful of roasted peanuts",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "roasted peanuts",
+            "quantity": 1,
+            "unit": "handful",
+            "calories_kcal_range": [
+              160,
+              200
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          160,
+          200
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "roasted peanuts",
+            "quantity": 28.0,
+            "unit": "g",
+            "calories_kcal": 159.0,
+            "protein_g": 7.2,
+            "carbs_g": 4.5,
+            "fat_g": 13.8,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 159.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "roasted peanuts",
+          "expected_range": [
+            160,
+            200
+          ],
+          "got_kcal": 159.0,
+          "in_range": false,
+          "pct_error": 11.7
+        }
+      ]
+    },
+    {
+      "input": "a few digestive biscuits",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a few digestive biscuits",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "digestive biscuit",
+            "quantity": 3,
+            "unit": "piece",
+            "calories_kcal_range": [
+              100,
+              150
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          100,
+          150
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "digestive biscuit",
+            "quantity": 4.0,
+            "unit": "piece",
+            "calories_kcal": 280.0,
+            "protein_g": 4.0,
+            "carbs_g": 40.0,
+            "fat_g": 12.0,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 280.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "digestive biscuit",
+          "expected_range": [
+            100,
+            150
+          ],
+          "got_kcal": 280.0,
+          "in_range": false,
+          "pct_error": 124.0
+        }
+      ]
+    },
+    {
+      "input": "a slice of banana bread",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a slice of banana bread",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "banana bread",
+            "quantity": 1,
+            "unit": "slice",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          150,
+          220
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "banana bread slice",
+            "quantity": 1.0,
+            "unit": "slice",
+            "calories_kcal": 120.0,
+            "protein_g": 2.0,
+            "carbs_g": 20.0,
+            "fat_g": 4.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 120.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "banana bread",
+          "expected_range": [
+            150,
+            220
+          ],
+          "got_kcal": 120.0,
+          "in_range": false,
+          "pct_error": 35.1
+        }
+      ]
+    },
+    {
+      "input": "masala dosa with sambar",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "masala dosa with sambar",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "masala dosa",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              200,
+              350
+            ]
+          },
+          {
+            "name": "sambar",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              100,
+              150
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          500
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "masala dosa",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 150.0,
+            "protein_g": 4.0,
+            "carbs_g": 25.0,
+            "fat_g": 4.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "sambar",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 150.0,
+            "protein_g": 8.0,
+            "carbs_g": 20.0,
+            "fat_g": 4.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 300.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "masala dosa",
+          "expected_range": [
+            200,
+            350
+          ],
+          "got_kcal": 150.0,
+          "in_range": false,
+          "pct_error": 45.5
+        }
+      ]
+    },
+    {
+      "input": "idli with coconut chutney",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "idli with coconut chutney",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "idli",
+            "quantity": 3,
+            "unit": "piece",
+            "calories_kcal_range": [
+              105,
+              150
+            ]
+          },
+          {
+            "name": "coconut chutney",
+            "quantity": 2,
+            "unit": "tbsp",
+            "calories_kcal_range": [
+              35,
+              50
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          140,
+          200
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "idli",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 70.0,
+            "protein_g": 3.0,
+            "carbs_g": 14.0,
+            "fat_g": 1.0,
+            "confidence": "high"
+          },
+          {
+            "name": "coconut chutney",
+            "quantity": 2.0,
+            "unit": "tbsp",
+            "calories_kcal": 90.0,
+            "protein_g": 1.0,
+            "carbs_g": 2.0,
+            "fat_g": 9.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 160.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "idli",
+          "expected_range": [
+            105,
+            150
+          ],
+          "got_kcal": 70.0,
+          "in_range": false,
+          "pct_error": 45.1
+        },
+        {
+          "name": "coconut chutney",
+          "expected_range": [
+            35,
+            50
+          ],
+          "got_kcal": 90.0,
+          "in_range": false,
+          "pct_error": 111.8
+        }
+      ]
+    },
+    {
+      "input": "a plate of bisi bele bath",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a plate of bisi bele bath",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "bisi bele bath",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              300,
+              450
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          450
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "bisi bele bath",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 280.0,
+            "protein_g": 9.0,
+            "carbs_g": 48.0,
+            "fat_g": 6.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 280.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "bisi bele bath",
+          "expected_range": [
+            300,
+            450
+          ],
+          "got_kcal": 280.0,
+          "in_range": false,
+          "pct_error": 25.3
+        }
+      ]
+    },
+    {
+      "input": "a cup of filter coffee",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a cup of filter coffee",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "filter coffee",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              40,
+              70
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          40,
+          70
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "filter coffee",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 2.0,
+            "protein_g": 0.3,
+            "carbs_g": 0.0,
+            "fat_g": 0.0,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 2.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "filter coffee",
+          "expected_range": [
+            40,
+            70
+          ],
+          "got_kcal": 2.0,
+          "in_range": false,
+          "pct_error": 96.4
+        }
+      ]
+    },
+    {
+      "input": "2 idlis and a vada",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "2 idlis and a vada",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "idli",
+            "quantity": 2,
+            "unit": "piece",
+            "calories_kcal_range": [
+              70,
+              100
+            ]
+          },
+          {
+            "name": "vada",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              90,
+              120
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          160,
+          220
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "idli",
+            "quantity": 2.0,
+            "unit": "piece",
+            "calories_kcal": 70.0,
+            "protein_g": 2.4,
+            "carbs_g": 14.0,
+            "fat_g": 0.4,
+            "confidence": "medium"
+          },
+          {
+            "name": "vada",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 150.0,
+            "protein_g": 3.0,
+            "carbs_g": 20.0,
+            "fat_g": 8.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 220.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "vada",
+          "expected_range": [
+            90,
+            120
+          ],
+          "got_kcal": 150.0,
+          "in_range": false,
+          "pct_error": 42.9
+        }
+      ]
+    },
+    {
+      "input": "rava dosa with chutney",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "rava dosa with chutney",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "rava dosa",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              180,
+              280
+            ]
+          },
+          {
+            "name": "coconut chutney",
+            "quantity": 2,
+            "unit": "tbsp",
+            "calories_kcal_range": [
+              35,
+              50
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          215,
+          330
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "rava dosa",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 216.0,
+            "protein_g": 7.2,
+            "carbs_g": 43.8,
+            "fat_g": 0.9,
+            "confidence": "medium"
+          },
+          {
+            "name": "oil (used for cooking)",
+            "quantity": 1.0,
+            "unit": "tsp",
+            "calories_kcal": 40.0,
+            "protein_g": 0.0,
+            "carbs_g": 0.0,
+            "fat_g": 4.5,
+            "confidence": "medium"
+          },
+          {
+            "name": "coconut chutney",
+            "quantity": 1.0,
+            "unit": "tbsp",
+            "calories_kcal": 70.0,
+            "protein_g": 0.5,
+            "carbs_g": 2.0,
+            "fat_g": 6.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 326.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "oil (used for cooking)"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "coconut chutney",
+          "expected_range": [
+            35,
+            50
+          ],
+          "got_kcal": 70.0,
+          "in_range": false,
+          "pct_error": 64.7
+        }
+      ]
+    },
+    {
+      "input": "a plate of pongal",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a plate of pongal",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "pongal",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              250,
+              350
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          250,
+          350
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "pongal",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 200.0,
+            "protein_g": 6.0,
+            "carbs_g": 40.0,
+            "fat_g": 4.0,
+            "confidence": "low"
+          }
+        ],
+        "total_kcal": 200.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "pongal",
+          "expected_range": [
+            250,
+            350
+          ],
+          "got_kcal": 200.0,
+          "in_range": false,
+          "pct_error": 33.3
+        }
+      ]
+    },
+    {
+      "input": "sambar rice with papad",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "sambar rice with papad",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "sambar rice",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              220,
+              300
+            ]
+          },
+          {
+            "name": "papad",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              35,
+              60
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          255,
+          360
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "sambar rice",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 350.0,
+            "protein_g": 12.0,
+            "carbs_g": 60.0,
+            "fat_g": 5.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "papad",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 50.0,
+            "protein_g": 1.0,
+            "carbs_g": 8.0,
+            "fat_g": 2.0,
+            "confidence": "high"
+          }
+        ],
+        "total_kcal": 400.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "sambar rice",
+          "expected_range": [
+            220,
+            300
+          ],
+          "got_kcal": 350.0,
+          "in_range": false,
+          "pct_error": 34.6
+        }
+      ]
+    },
+    {
+      "input": "a bowl of rasam",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a bowl of rasam",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "rasam",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              60,
+              100
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          60,
+          100
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "rasam",
+            "quantity": 250.0,
+            "unit": "ml",
+            "calories_kcal": 50.0,
+            "protein_g": 1.0,
+            "carbs_g": 8.0,
+            "fat_g": 2.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 50.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "rasam",
+          "expected_range": [
+            60,
+            100
+          ],
+          "got_kcal": 50.0,
+          "in_range": false,
+          "pct_error": 37.5
+        }
+      ]
+    },
+    {
+      "input": "uttapam with sambar",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "uttapam with sambar",
+        "meal_type": "breakfast",
+        "expected_items": [
+          {
+            "name": "uttapam",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              180,
+              280
+            ]
+          },
+          {
+            "name": "sambar",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              100,
+              150
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          280,
+          430
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "uttapam",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 160.0,
+            "protein_g": 4.0,
+            "carbs_g": 30.0,
+            "fat_g": 4.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "sambar",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 130.0,
+            "protein_g": 6.0,
+            "carbs_g": 20.0,
+            "fat_g": 3.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 290.0,
+        "meal_type": "breakfast"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "uttapam",
+          "expected_range": [
+            180,
+            280
+          ],
+          "got_kcal": 160.0,
+          "in_range": false,
+          "pct_error": 30.4
+        }
+      ]
+    },
+    {
+      "input": "a grilled cheese sandwich",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a grilled cheese sandwich",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "grilled cheese sandwich",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              300,
+              400
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          400
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "bread",
+            "quantity": 2.0,
+            "unit": "slice",
+            "calories_kcal": 140.0,
+            "protein_g": 2.0,
+            "carbs_g": 24.0,
+            "fat_g": 2.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "cheddar cheese",
+            "quantity": 2.0,
+            "unit": "slice",
+            "calories_kcal": 226.0,
+            "protein_g": 14.0,
+            "carbs_g": 2.0,
+            "fat_g": 18.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "butter",
+            "quantity": 1.0,
+            "unit": "tsp",
+            "calories_kcal": 34.0,
+            "protein_g": 0.0,
+            "carbs_g": 0.0,
+            "fat_g": 4.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 400.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "bread",
+        "butter"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "grilled cheese sandwich",
+          "expected_range": [
+            300,
+            400
+          ],
+          "got_kcal": 226.0,
+          "in_range": false,
+          "pct_error": 35.4
+        }
+      ]
+    },
+    {
+      "input": "a bowl of pasta with tomato sauce",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a bowl of pasta with tomato sauce",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "pasta with tomato sauce",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              350,
+              500
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          350,
+          500
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "cooked pasta",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 200.0,
+            "protein_g": 7.0,
+            "carbs_g": 42.0,
+            "fat_g": 1.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "tomato sauce",
+            "quantity": 0.5,
+            "unit": "cup",
+            "calories_kcal": 70.0,
+            "protein_g": 2.0,
+            "carbs_g": 12.0,
+            "fat_g": 2.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 270.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "tomato sauce"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "pasta with tomato sauce",
+          "expected_range": [
+            350,
+            500
+          ],
+          "got_kcal": 200.0,
+          "in_range": false,
+          "pct_error": 52.9
+        }
+      ]
+    },
+    {
+      "input": "a veggie burger with fries",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a veggie burger with fries",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "veggie burger",
+            "quantity": 1,
+            "unit": "whole",
+            "calories_kcal_range": [
+              350,
+              500
+            ]
+          },
+          {
+            "name": "fries",
+            "quantity": 1,
+            "unit": "serving",
+            "calories_kcal_range": [
+              300,
+              400
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          650,
+          900
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "veggie burger",
+            "quantity": 100.0,
+            "unit": "g",
+            "calories_kcal": 150.0,
+            "protein_g": 7.0,
+            "carbs_g": 20.0,
+            "fat_g": 7.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "fries",
+            "quantity": 150.0,
+            "unit": "g",
+            "calories_kcal": 312.0,
+            "protein_g": 3.5,
+            "carbs_g": 41.0,
+            "fat_g": 15.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 462.0,
+        "meal_type": "dinner"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "veggie burger",
+          "expected_range": [
+            350,
+            500
+          ],
+          "got_kcal": 150.0,
+          "in_range": false,
+          "pct_error": 64.7
+        }
+      ]
+    }
+  ],
+  "total_wall_clock_s": 1486.9,
+  "datasets": [
+    "meals.jsonl",
+    "north_indian.jsonl",
+    "snacks.jsonl",
+    "south_indian.jsonl",
+    "western_and_desserts.jsonl"
+  ],
+  "per_dataset_summary": {
+    "meals": {
+      "n_examples": 12,
+      "format_valid_pct": 100.0,
+      "item_precision_pct": 90.9,
+      "item_recall_pct": 100.0,
+      "calorie_mape_pct": 22.0,
+      "confidence_calibration_score_pct": 40.0,
+      "wall_clock_s": 273.8
+    },
+    "north_indian": {
+      "n_examples": 17,
+      "format_valid_pct": 100.0,
+      "item_precision_pct": 90.6,
+      "item_recall_pct": 93.5,
+      "calorie_mape_pct": 22.9,
+      "confidence_calibration_score_pct": 56.2,
+      "wall_clock_s": 336.8
+    },
+    "snacks": {
+      "n_examples": 16,
+      "format_valid_pct": 100.0,
+      "item_precision_pct": 100.0,
+      "item_recall_pct": 100.0,
+      "calorie_mape_pct": 32.5,
+      "confidence_calibration_score_pct": 66.7,
+      "wall_clock_s": 336.9
+    },
+    "south_indian": {
+      "n_examples": 17,
+      "format_valid_pct": 100.0,
+      "item_precision_pct": 96.6,
+      "item_recall_pct": 100.0,
+      "calorie_mape_pct": 25.6,
+      "confidence_calibration_score_pct": 50.0,
+      "wall_clock_s": 401.9
+    },
+    "western_and_desserts": {
+      "n_examples": 8,
+      "format_valid_pct": 100.0,
+      "item_precision_pct": 75.0,
+      "item_recall_pct": 100.0,
+      "calorie_mape_pct": 24.9,
+      "confidence_calibration_score_pct": null,
+      "wall_clock_s": 137.5
+    }
+  }
+}

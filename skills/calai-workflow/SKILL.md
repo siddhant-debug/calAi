@@ -4,7 +4,7 @@ description: >
   Workflow guide for AI engineering on the CalAI project. Use this skill
   whenever the user explicitly says "use this skill" while working on CalAI.
   Covers: adding LangChain tools to calai_agent.py, building FastAPI endpoints
-  in calai_backend/, debugging Ollama/LangChain connection issues, and running tests.
+  in calai_backend/, debugging NVIDIA NIM/LangChain connection issues, and running tests.
 ---
 
 # CalAI Workflow Skill
@@ -13,14 +13,15 @@ description: >
 
 **What it is:** A calorie-tracking AI with two tracks:
 - `calai_agent.py` — learning track: manually built LangChain ReAct agent (THOUGHT → ACTION → OBSERVE loop)
-- `calai_backend/` — production track: FastAPI server wrapping the same agent logic
+- `calai_backend/` — production track: FastAPI server, deterministic `Orchestrator` by default (ADR-003), legacy ReAct loop behind `USE_ORCHESTRATOR=false`
 
-**Model:** `qwen2.5:3b` via Ollama at `localhost:11434` (tunnelled from `192.168.1.58` via SSH)
+**Chat LLM provider:** NVIDIA NIM (`ChatNVIDIA`) as of ADR-006 — full replacement of the old local-Ollama setup, no rollback flag. `config.py`'s `LLM_MODELS` is a retry+fallback chain; `NVIDIA_API_KEY` (in `calai_backend/.env`) is required, no local-model fallback. **Do not assume a model ID in `LLM_MODELS` is live** — NVIDIA retires NIM-hosted models over time and the catalog's own `deprecated` flag has been observed to disagree with what a real call returns. Verify with `python evals/run_eval.py --model <id>` (or a direct `parse_meal_text` smoke call) before relying on or adding one.
+
 **Key files:**
-- `calai_agent.py` — single-file agent + all tools
-- `learning.md` — step-by-step roadmap for the learning track
-- `AGENT-HANDOFF.md` — session state, pending work, design decisions
-- `requirements.txt` — Python deps
+- `calai_agent.py` — single-file agent + all tools (learning track, standalone)
+- `calai_backend/` — the actual production backend (see "Track 2" below for its real, current layout)
+- `evals/` — accuracy harness for `parse_meal_text`/`MealParseAgent` (ADR-004); `evals/README.md` is the how-to
+- `archdocs/ADR-*.md` — the design record; read the relevant ones before nontrivial changes
 
 ---
 
@@ -52,96 +53,60 @@ def tool_name(param: type) -> return_type:
 - Empty `tool_calls` = LLM is done → `ai_message.content` is the final answer
 - Feed results back via `ToolMessage(content=str(result), tool_call_id=id)`
 
-### Pending tools (from `learning.md`)
-
-**Step 4 — `parse_meal_text`**
-- Nested Ollama call with `format="json"` on a `ChatOllama` instance
-- Returns: `{items: [{name, quantity, unit, calories_kcal, protein_g, carbs_g, fat_g}], total_kcal, meal_type}`
-- Use a dedicated `ChatOllama(model=MODEL, base_url=base_url, format="json")` instance — don't reuse the bound one
-
-**Step 5 — `save_meal`**
-- `sqlite3` — open/create `calai.db`, create meals table if not exists
-- Schema: `(id INTEGER PRIMARY KEY, date TEXT, meal_type TEXT, total_kcal REAL, data_json TEXT)`
-- Insert with `datetime.date.today().isoformat()` and `json.dumps(parsed_meal)`
-
-**Step 6 — `get_daily_summary`**
-- Query `calai.db` WHERE date = target date
-- Return `{"date": date, "meals_logged": n, "total_kcal": total}`
+This learning-track file (`calai_agent.py`) is intentionally kept separate from `calai_backend/` and still uses its own direct LLM client setup — check its current imports before assuming it shares `providers/llm.py` with the backend.
 
 ---
 
-## Track 2: FastAPI Endpoint in `calai_backend/`
+## Track 2: `calai_backend/` — the real production layout
 
-The planned backend structure (not yet created):
+This is built and running, not a plan — the structure below is what actually exists today (see `calai_backend/README.md` for the fuller version):
 
 ```
 calai_backend/
-├── main.py              # FastAPI app + lifespan
-├── config.py            # OLLAMA_URL, MODEL_NAME, MAX_STEPS
-├── agent/
-│   ├── react_loop.py    # ReActAgent class
-│   ├── llm_client.py    # OllamaClient (httpx, timeout=60s)
-│   └── schemas.py       # Pydantic I/O models
-├── tools/               # Pure-Python tool functions (no @tool decorator)
+├── main.py                   # FastAPI app + lifespan
+├── config.py                 # NVIDIA_API_KEY, LLM_MODELS (fallback chain), MAX_STEPS, USE_ORCHESTRATOR
+├── schemas.py                # Pydantic request/response models
+├── .env                      # NVIDIA_API_KEY (not committed) — see ../.env.example
+├── api/
+│   └── routes.py             # /api/health, /api/calculate, /api/parse-meal, /api/agent
+├── providers/
+│   └── llm.py                # ChatNVIDIA client factory — get_llm()/get_json_llm(), retry+fallback (ADR-006)
+├── services/
+│   ├── agent_service.py      # run_agent() — Orchestrator (default) + legacy ReAct loop
+│   ├── calc_pipeline.py      # run_calc_pipeline() — deterministic BMR→TDEE→goal, no LLM
+│   └── meal_parse_agent.py   # parse_meal() — isolated, eval-gated meal-parsing call
+├── tools/                    # Plain-Python functions (NO @tool decorator — wrappers live in api/routes.py)
 │   ├── bmr.py
 │   ├── tdee.py
-│   └── calorie_goal.py
-├── api/
-│   └── routes.py        # /agent, /calculate, /summary, /profile
-├── db/
-│   ├── database.py      # SQLite engine + get_session()
-│   └── models.py        # ORM models
-└── tests/
-    ├── test_tools.py
-    └── test_react_loop.py
+│   ├── calorie_goal.py
+│   └── meal_parser.py        # thin wrapper around services/meal_parse_agent.py
+└── tests/                    # pytest — plain functions, no LLM calls, exact input→output
 ```
 
-**Next endpoint to build: `POST /api/calculate`**
-
-```json
-// Request
-{"weight_kg": 57, "height_cm": 175, "age": 25, "gender": "male",
- "activity_level": "lightly_active", "goal": "gain", "goal_rate_kg_per_week": 0.5}
-
-// Response
-{"bmr_kcal": 1596.3, "tdee_kcal": 2194.9, "calorie_goal_kcal": 2744.9}
-```
-
-Implementation steps:
-1. Extract `calculate_bmr`, `calculate_tdee`, `calculate_calorie_goal` from `calai_agent.py` into `tools/` as plain functions (no `@tool`)
-2. Add `CalcRequest` / `CalcResponse` Pydantic models in `agent/schemas.py`
-3. Wire `POST /api/calculate` in `api/routes.py` — call functions directly in order
-4. FastAPI + Pydantic handles 422 validation automatically
+**Adding a new endpoint:**
+1. If it needs an LLM call, get the client via `providers/llm.py`'s `get_llm()`/`get_json_llm()` — never construct a `ChatNVIDIA` instance directly elsewhere, that's how the retry+fallback chain gets bypassed.
+2. Add/extend Pydantic models in `schemas.py`.
+3. Wire the route in `api/routes.py`. `@tool` wrappers (if the route needs to be agent-callable) live here, not in `tools/`.
+4. If the new logic is nondeterministic (calls an LLM), it needs eval coverage, not just a pytest unit test — see `evals/README.md` and `archdocs/ADR-004-eval-harness.md`. If it's pure computation, a `calai_backend/tests/` pytest case with exact input→output is enough.
 
 **Running the backend:**
 ```bash
-cd calai_backend
-source ../.venv/bin/activate
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# from the repo root, so calai_backend.* imports resolve
+uvicorn calai_backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ---
 
-## Debugging Ollama / LangChain Issues
+## Debugging NVIDIA NIM / LangChain Issues
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `httpx.ConnectError` | Ollama not running | `ollama serve` (or check SSH tunnel) |
-| `httpx.ReadError` (errno 54) | Model not downloaded | `ollama pull qwen2.5:3b` |
-| `httpx.HTTPStatusError` | Bad request/model name | Print `e.response.text` for details |
-| Agent loops to MAX_ITERATIONS | LLM not following tool order | Strengthen SYSTEM_PROMPT, add few-shot example |
-| Tool args wrong type | Model hallucinating param names | Add explicit param names + types in docstring |
-| `/api/agent` timeout | SSH tunnel latency or cold-start | `time curl localhost:11434/v1/chat/completions ...` to isolate |
-
-**SSH tunnel (Ollama on remote machine):**
-```bash
-ssh -L 11434:localhost:11434 sidtom@192.168.1.58 -N -f
-```
-
-**Check what models are available:**
-```bash
-ollama list
-```
+| `401 Unauthorized` | Wrong/missing `NVIDIA_API_KEY`, or `.env` loaded from the wrong path | Check `dotenv_values('calai_backend/.env').keys()` for the exact var name (names only, never print values) — a stale `.env` elsewhere in the repo can shadow the real one if `load_dotenv()` isn't anchored to `calai_backend/`'s own directory |
+| `410 Gone` on a specific model | NVIDIA retired that model | Don't add/keep it in `LLM_MODELS` — verify replacements with `python evals/run_eval.py --model <id>` before relying on the catalog's `deprecated` flag |
+| `503` / rate-limited | NIM's free/eval tier request limit | This is what `LLM_MODELS`'s fallback chain exists for — confirm the chain actually has more than one *live* model, not just more than one entry |
+| Agent loops to MAX_STEPS | LLM not following tool order (legacy ReAct path only) | Strengthen the system prompt, add a few-shot example. The default Orchestrator path (`USE_ORCHESTRATOR=true`) has no iteration loop to get stuck in |
+| Tool args wrong type | Model hallucinating param names | Add explicit param names + types in the tool's docstring |
+| `.bind_tools()` has no effect | Called on an already-wrapped (retry/fallback) client | Must be called on the raw client *before* `with_retry`/`with_fallbacks` wrapping — `RunnableRetry`/`RunnableWithFallbacks` aren't `BaseChatModel` and silently don't forward it. See `providers/llm.py`'s `_raw_clients()`/`get_llm()` split. |
 
 ---
 
@@ -154,18 +119,19 @@ source .venv/bin/activate
 # Learning track — run the agent directly
 python calai_agent.py
 
-# Backend tests (once calai_backend/ exists)
-cd calai_backend
-pytest tests/ -v
+# Backend unit tests (deterministic tools, schemas, routes — no LLM calls)
+pytest calai_backend/tests/ -v
+
+# Eval harness (parse_meal_text accuracy — real LLM calls, several minutes)
+cd evals && python run_eval.py
 ```
 
 ---
 
 ## Key Conventions
 
-- `temperature=0` on every `ChatOllama` — deterministic tool selection
-- All math tools are pure Python — LLM only decides *which* tool to call
-- `@traceable` on every tool + `run_agent` — LangSmith tracing (currently disabled in `.env`)
-- Tool docstrings are the LLM's only guide — make them precise and enumerate valid values
-- Never read `.env` — ask user for env var values if needed
-- Check `AGENT-HANDOFF.md` at session start for current status and pending work
+- `temperature=0` where determinism matters (tool selection, structured extraction) — check the specific client construction in `providers/llm.py` rather than assuming a project-wide default.
+- All math tools are pure Python — LLM only decides *which* tool to call (legacy ReAct path) or the Orchestrator routes to them directly (default path).
+- Tool docstrings are the LLM's only guide — make them precise and enumerate valid values.
+- Never read `.env` — ask the user for env var values if needed; use `dotenv_values(path).keys()` (names only) if you need to confirm a variable name exists, never its value.
+- Read `archdocs/ADR-*.md` for current status and design rationale — `AGENT-HANDOFF.md` (if present) is older session-state notes, not the source of truth once an ADR covers the same ground.

@@ -2,7 +2,6 @@ from typing import List
 
 from pydantic import BaseModel
 
-from calai_backend.config import MODEL_NAME
 from calai_backend.logging_config import get_logger
 from calai_backend.providers.llm import get_json_llm
 from calai_backend.schemas import MealItem
@@ -71,7 +70,7 @@ def parse_meal(meal_text: str, meal_type: str = "snack") -> dict:
     prompt = MEAL_EXTRACTION_PROMPT.format(meal_text=safe_text, meal_type=meal_type)
     llm = get_json_llm()
 
-    log.debug("parse_meal calling llm_call model=%s meal_type=%s", MODEL_NAME, meal_type)
+    log.debug("parse_meal calling llm_call meal_type=%s", meal_type)
     call_result = llm_call(name="parse_meal", prompt=prompt, schema=_MealParseSchema, llm=llm)
 
     result = call_result.output.model_dump(mode="json")

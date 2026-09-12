@@ -16,28 +16,25 @@ of letting an LLM decide tool order in a ReAct loop. The old ReAct loop
 and `../artefacts/adr003-latency-comparison.json` for the measured 2.25x
 speedup.
 
-Meal parsing and the agent path are backed by a local
-[Ollama](https://ollama.com) model via `langchain-ollama`.
+Meal parsing and the agent path are backed by **NVIDIA NIM**
+(`langchain-nvidia-ai-endpoints`, `ChatNVIDIA`) as of ADR-006
+(`../archdocs/ADR-006-nvidia-nim-migration.md`) — full replacement of the
+previous local-Ollama provider, no rollback flag. Calls go through a
+retry+fallback chain (`config.py`'s `LLM_MODELS`), so a single
+model being slow/rate-limited/down on NIM doesn't take down the whole
+chat LLM surface.
 
 ## Setup
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install fastapi uvicorn langchain langchain-core langchain-ollama pydantic python-dotenv httpx
+pip install -r ../requirements.txt
 ```
 
-Pull and run the model:
-
-```bash
-ollama pull qwen2.5:3b
-ollama serve
-```
-
-`config.py`'s `MODEL_NAME` env-var default is still `qwen2.5:7b`, but nothing
-pulls that automatically — set `MODEL_NAME=qwen2.5:3b` in `.env`, or confirm
-what's actually live with `curl localhost:11434/api/tags` before assuming
-the default is what's running.
+Set `NVIDIA_API_KEY` in `.env` (see `../.env.example`) — get one at
+https://build.nvidia.com. There is no local-model fallback; every
+LLM-dependent route requires this to be set.
 
 ## Configuration
 
@@ -45,10 +42,14 @@ Environment variables (optionally via a `.env` file, see `config.py`):
 
 | Variable | Default | Description |
 |---|---|---|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `MODEL_NAME` | `qwen2.5:7b` (set to `qwen2.5:3b` in practice) | Model used for meal parsing and the agent path |
+| `NVIDIA_API_KEY` | `""` | Required — NVIDIA NIM API key for the chat LLM provider |
 | `MAX_STEPS` | `8` | Max tool-call iterations for the legacy ReAct loop only |
 | `USE_ORCHESTRATOR` | `true` | `true` → deterministic Orchestrator (default); `false` → legacy ReAct loop |
+
+`LLM_MODELS` (the NIM fallback chain, in order) is set in
+`config.py`, not via an env var — see ADR-006 for the original rationale
+(the chain was reduced from 4 to 2 models after 3 were found retired by
+NVIDIA post-migration; `config.py`'s comment has the current list and why).
 
 ## Run
 
@@ -118,7 +119,7 @@ main.py                        FastAPI app entrypoint
 config.py                      Env-var configuration (incl. USE_ORCHESTRATOR)
 schemas.py                     Pydantic request/response models
 api/routes.py                  Route handlers
-providers/llm.py               ChatOllama client factory
+providers/llm.py               ChatNVIDIA client factory (NVIDIA NIM, retry+fallback chain, ADR-006)
 services/agent_service.py      run_agent() — Orchestrator (default) + legacy ReAct loop
 services/calc_pipeline.py      run_calc_pipeline() — deterministic, no LLM
 services/meal_parse_agent.py   parse_meal() — isolated, evaluated meal-parsing call

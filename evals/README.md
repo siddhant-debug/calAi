@@ -21,6 +21,12 @@ accuracy can be tracked per cuisine/meal-category as well as overall:
 | `dataset/north_indian.jsonl` | North Indian dishes, spread across breakfast/lunch/dinner/snack |
 | `dataset/south_indian.jsonl` | South Indian dishes, spread across breakfast/lunch/dinner/snack |
 | `dataset/snacks.jsonl` | Snack-specific foods (Indian and Western), all `meal_type: "snack"` |
+| `dataset/western_and_desserts.jsonl` | Desserts, beverages, and Western dishes not covered by `meals.jsonl` |
+
+70 examples total across the 5 files as of the ADR-006 dataset expansion — up
+from the original 33, to reduce how much a single wrong parse swings the
+aggregate `_pct` metrics (with 33 examples, one flip moved a metric by ~3
+points, which made `--gate` noisy).
 
 Each file is independent — add a new one (e.g. `dataset/east_indian.jsonl`)
 and it's automatically picked up the next time `run_eval.py` runs in its
@@ -38,9 +44,10 @@ python run_eval.py
 By default this runs **every** `.jsonl` file in `dataset/` (directory mode).
 For each dataset file it:
 1. Loads the examples.
-2. Calls the real `parse_meal_text` (a real Ollama call — whatever model
-   `calai_backend/config.py`/`MODEL_NAME` resolves to, no mocking — the
-   model's actual output is what's under test) for every example.
+2. Calls the real `parse_meal_text` (a real NVIDIA NIM call — the
+   `calai_backend/config.py`/`LLM_MODELS` retry+fallback chain, ADR-006, no
+   mocking — the model's actual output is what's under test) for every
+   example.
 3. Scores each example against `scorers/item_match.py`,
    `scorers/calorie_accuracy.py`, and `scorers/confidence_calibration.py`.
 4. Writes that dataset's own report to `report/<dataset_stem>.json`
@@ -71,23 +78,58 @@ Override output locations:
 python run_eval.py --dataset dataset --out report/latest.json
 ```
 
+### Scoring one model in isolation
+
+The default run scores whatever `config.LLM_MODELS` fallback chain is
+currently configured — it doesn't tell you how any *one* model in that
+chain performs on its own. `--model` temporarily overrides the chain to a
+single model for the run and writes to its own report file instead of
+touching `report/latest.json`:
+
+```bash
+python run_eval.py --model openai/gpt-oss-20b
+# writes report/openai_gpt-oss-20b.json — report/latest.json is untouched
+```
+
+Use this before adding a candidate model to the fallback chain — verify it
+actually responds (NVIDIA's own catalog `deprecated` flag has been found
+unreliable; several models it lists as live return `410 Gone` on a real
+call) and see how it scores, rather than assuming a same-vendor model is
+a safe swap.
+
+### Gating a run against the baseline
+
+`--gate` turns a run into a pass/fail check instead of a number you have to
+eyeball:
+
+```bash
+python run_eval.py --gate --baseline report/latest.json --tolerance-pct 5.0
+```
+
+Compares every `_pct`-suffixed field in the new run against the baseline
+report and exits `1` if any of them regressed beyond `--tolerance-pct`
+(lower-is-better for `calorie_mape_pct`, higher-is-better for everything
+else). A missing/unreadable baseline is treated as "nothing to compare,"
+not a failure. `reviewer` uses this — not a manual JSON diff — to gate any
+change to `parse_meal_text`'s prompt or model.
+
 ## Reading `report/latest.json`
 
 ```json
 {
-  "run_at": "2026-08-01T21:40:00Z",
-  "model": "qwen2.5:7b",
-  "n_examples": 20,
+  "run_at": "2026-09-12T19:44:59Z",
+  "model": ["nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", "openai/gpt-oss-20b"],
+  "n_examples": 70,
   "format_valid_pct": 100.0,
-  "item_precision_pct": 91.0,
-  "item_recall_pct": 87.0,
-  "calorie_mape_pct": 8.4,
-  "confidence_calibration_score_pct": 76.0,
+  "item_precision_pct": 91.2,
+  "item_recall_pct": 99.0,
+  "calorie_mape_pct": 37.1,
+  "confidence_calibration_score_pct": 57.1,
   "confidence_calibration_detail": { "...": "per-confidence-bucket error rates" },
   "failures": [ { "input": "...", "reason": "...", "expected": "...", "got": "..." } ],
-  "total_wall_clock_s": 1800.2,
-  "datasets": ["meals.jsonl", "north_indian.jsonl", "south_indian.jsonl", "snacks.jsonl"],
-  "per_dataset_summary": { "north_indian": { "item_precision_pct": 90.0, "...": "..." } }
+  "total_wall_clock_s": 1397.3,
+  "datasets": ["meals.jsonl", "north_indian.jsonl", "south_indian.jsonl", "snacks.jsonl", "western_and_desserts.jsonl"],
+  "per_dataset_summary": { "north_indian": { "item_precision_pct": 93.8, "...": "..." } }
 }
 ```
 
@@ -104,10 +146,13 @@ dataset files contributed and give each one's headline numbers so you can
 spot a category-specific regression (e.g. "south Indian accuracy dropped but
 north Indian didn't") without opening every per-dataset report file.
 
-`model` reports the model that actually answered the calls (read from
-`calai_backend.config.MODEL_NAME` at run time), not a hardcoded assumption —
-if you override it via `MODEL_NAME=<model> python run_eval.py` (e.g. to test
-`qwen2.5:3b` vs `7b`), the report reflects whichever one actually ran.
+`model` reports the configured `LLM_MODELS` fallback chain (read from
+`calai_backend.config.LLM_MODELS` at run time), not which specific model in
+the chain answered any given call — NIM's retry+fallback wrapping
+(ADR-006) doesn't currently surface per-call "which model answered" back to
+the caller. Which one actually fires per request is currently only
+observable via manual inspection (e.g. a smoke test against a rate-limited
+primary), not via this report.
 
 - **`format_valid_pct`** — hard gate: did the model return parseable JSON
   matching the expected shape at all? A format failure short-circuits the
@@ -177,12 +222,15 @@ same principle as adding a unit test for every bug fix.
 | `dataset/north_indian.jsonl` | North Indian dishes across all meal types |
 | `dataset/south_indian.jsonl` | South Indian dishes across all meal types |
 | `dataset/snacks.jsonl` | Snack-specific foods |
+| `dataset/western_and_desserts.jsonl` | Desserts, beverages, Western dishes |
 | `scorers/item_match.py` | Fuzzy precision/recall on extracted item names |
 | `scorers/calorie_accuracy.py` | Per-item calorie-range pass/fail + aggregate MAPE |
 | `scorers/confidence_calibration.py` | Does `confidence: "low"` correlate with actually being wrong? |
 | `run_eval.py` | Loads dataset(s), calls `parse_meal_text` per example, aggregates, writes per-dataset + combined reports |
-| `report/latest.json` | Combined (all-dataset) scores — committed to git as the accuracy timeline |
+| `report/latest.json` | Combined (all-dataset) scores for the current fallback chain — committed to git as the accuracy timeline |
 | `report/<dataset_stem>.json` | Per-category scores (e.g. `report/north_indian.json`) |
+| `report/<model_name>.json` | Single-model scores from `--model <name>` (e.g. `report/openai_gpt-oss-20b.json`) — used to vet a candidate fallback model before adding it to `config.LLM_MODELS` |
+| `report/archive/` | Superseded baselines kept for the accuracy-over-time story when `latest.json` is about to be overwritten by an incompatible run (different provider/dataset size) |
 
 ## Known scope limits (see ADR-004 "Non-Goals")
 

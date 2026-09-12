@@ -1,0 +1,14 @@
+{
+  "_archive_note": "Reconstructed from ADR-004-eval-harness.md Action Item 7 prose, not a byte-exact copy of the original report/latest.json — that file was overwritten in place by later runs (ADR-006 NVIDIA migration) rather than archived at the time, and git history for evals/report/ contains only the current (post-overwrite) version. Per-dataset breakdown and the individual `failures` list from the original run were not recorded in the ADR and could not be recovered. Kept here so future baseline comparisons (e.g. scratch/eval-comparison-report.html) have a real file to cite instead of only prose.",
+  "run_at": "2026-08-01T21:40:00Z",
+  "model": "qwen2.5:3b",
+  "provider": "Ollama (local)",
+  "n_examples": 33,
+  "format_valid_pct": 100.0,
+  "item_precision_pct": 83.6,
+  "item_recall_pct": 92.0,
+  "calorie_mape_pct": 59.3,
+  "confidence_calibration_score_pct": 39.6,
+  "total_wall_clock_s": 840,
+  "source": "archdocs/ADR-004-eval-harness.md, Action Item 7"
+}

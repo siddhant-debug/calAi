@@ -2,12 +2,9 @@ import logging
 import time
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
-from langchain_core.language_models import BaseChatModel
+from fastapi import APIRouter, HTTPException
 from pydantic import ValidationError
 
-from calai_backend.config import MODEL_NAME, OLLAMA_BASE_URL
-from calai_backend.providers.llm import get_llm
 from calai_backend.schemas import (
     AgentRequest,
     AgentResponse,
@@ -59,25 +56,25 @@ def parse_meal(req: MealParseRequest) -> MealParseResponse:
     try:
         result = parse_meal_text(req.meal_text, req.meal_type)
     except httpx.ConnectError:
-        log.error("[/api/parse-meal] Cannot connect to Ollama at %s", OLLAMA_BASE_URL)
+        log.error("[/api/parse-meal] Cannot connect to NVIDIA NIM")
         raise HTTPException(
             status_code=503,
-            detail=f"Cannot connect to Ollama at {OLLAMA_BASE_URL}. Run `ollama serve`.",
+            detail="Cannot connect to NVIDIA NIM (integrate.api.nvidia.com).",
         )
     except httpx.ReadError:
         raise HTTPException(
             status_code=503,
-            detail=f"Ollama dropped the connection — model '{MODEL_NAME}' may not be downloaded.",
+            detail="NVIDIA NIM dropped the connection while all fallback models were exhausted.",
         )
     except httpx.HTTPStatusError as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Ollama returned HTTP {e.response.status_code}: {e.response.text[:200]}",
+            detail=f"NVIDIA NIM returned HTTP {e.response.status_code}: {e.response.text[:200]}",
         )
     except httpx.TimeoutException:
         raise HTTPException(
             status_code=504,
-            detail=f"Ollama timed out — model '{MODEL_NAME}' may be overloaded.",
+            detail="NVIDIA NIM timed out on every model in the fallback chain.",
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -97,6 +94,18 @@ def parse_meal(req: MealParseRequest) -> MealParseResponse:
 # ---------------------------------------------------------------------------
 
 @router.post("/agent", response_model=AgentResponse)
-def agent(req: AgentRequest, llm: BaseChatModel = Depends(get_llm)) -> AgentResponse:
-    """Run the CalAI ReAct agent and return the final LLM response."""
-    return run_agent(req.message, llm)
+def agent(req: AgentRequest) -> AgentResponse:
+    """Run the CalAI agent and return the final LLM response.
+
+    ADR-006: no longer builds an LLM via `Depends(get_llm)` at the route
+    boundary. FastAPI DI ran before the tool list was known, and calling
+    `.bind_tools()` on the retry/fallback-wrapped object `get_llm()` now
+    returns would fail (`RunnableWithFallbacks` has no `.bind_tools()`).
+    Neither downstream path needs a pre-built client anyway: the
+    orchestrator builds its own `get_json_llm()` internally
+    (agent_service.py::extract_request_fields), and the ReAct loop builds
+    its own tool-bound `get_llm(tools=tools)` internally
+    (agent_service.py::_run_agent_react_loop). `llm=None` is passed for
+    signature parity with `run_agent(message, llm)`.
+    """
+    return run_agent(req.message, None)

@@ -1,25 +1,27 @@
 {
-  "run_at": "2026-08-02T10:03:32Z",
-  "model": "qwen2.5:3b",
-  "n_examples": 3,
-  "format_valid_pct": 100.0,
-  "item_precision_pct": 100.0,
+  "run_at": "2026-09-12T15:07:54Z",
+  "model": [
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+  ],
+  "n_examples": 12,
+  "format_valid_pct": 83.3,
+  "item_precision_pct": 88.9,
   "item_recall_pct": 100.0,
-  "calorie_mape_pct": 35.4,
-  "confidence_calibration_score_pct": 0.0,
+  "calorie_mape_pct": 26.2,
+  "confidence_calibration_score_pct": 42.9,
   "confidence_calibration_detail": {
     "error_rate_by_confidence": {
       "low": 0.0,
-      "medium": 0.6666666666666666,
-      "high": 1.0
+      "medium": 0.375,
+      "high": 0.14285714285714285
     },
     "n_items_by_confidence": {
       "low": 1,
-      "medium": 3,
-      "high": 1
+      "medium": 8,
+      "high": 7
     },
     "n_unlabeled_or_unmatched": 0,
-    "calibration_score": 0.0,
+    "calibration_score": 42.9,
     "note": null
   },
   "failures": [
@@ -59,25 +61,25 @@
           {
             "name": "roti",
             "quantity": 2.0,
-            "unit": "pieces",
-            "calories_kcal": 300.0,
-            "protein_g": 4.0,
-            "carbs_g": 65.0,
-            "fat_g": 1.0,
-            "confidence": "medium"
+            "unit": "piece",
+            "calories_kcal": 240.0,
+            "protein_g": 8.0,
+            "carbs_g": 50.0,
+            "fat_g": 6.0,
+            "confidence": "high"
           },
           {
             "name": "dal",
             "quantity": 1.0,
-            "unit": "serving",
-            "calories_kcal": 200.0,
-            "protein_g": 8.0,
-            "carbs_g": 45.0,
-            "fat_g": 3.0,
+            "unit": "cup",
+            "calories_kcal": 180.0,
+            "protein_g": 9.0,
+            "carbs_g": 30.0,
+            "fat_g": 2.0,
             "confidence": "medium"
           }
         ],
-        "total_kcal": 500.0,
+        "total_kcal": 420.0,
         "meal_type": "lunch"
       },
       "unmatched_expected": [],
@@ -89,9 +91,9 @@
             160,
             200
           ],
-          "got_kcal": 300.0,
+          "got_kcal": 240.0,
           "in_range": false,
-          "pct_error": 66.7
+          "pct_error": 33.3
         }
       ]
     },
@@ -129,27 +131,27 @@
       "got": {
         "items": [
           {
-            "name": "rice",
+            "name": "paneer butter masala",
             "quantity": 1.0,
             "unit": "cup",
-            "calories_kcal": 105.0,
-            "protein_g": 2.4,
-            "carbs_g": 23.8,
-            "fat_g": 0.6,
+            "calories_kcal": 1131.0,
+            "protein_g": 48.0,
+            "carbs_g": 13.0,
+            "fat_g": 94.0,
             "confidence": "medium"
           },
           {
-            "name": "paneer butter masala",
+            "name": "rice",
             "quantity": 1.0,
-            "unit": "piece",
-            "calories_kcal": 254.0,
-            "protein_g": 9.3,
-            "carbs_g": 20.7,
-            "fat_g": 8.6,
+            "unit": "cup",
+            "calories_kcal": 205.0,
+            "protein_g": 4.0,
+            "carbs_g": 45.0,
+            "fat_g": 0.0,
             "confidence": "high"
           }
         ],
-        "total_kcal": 359.0,
+        "total_kcal": 1336.0,
         "meal_type": "dinner"
       },
       "unmatched_expected": [],
@@ -161,23 +163,211 @@
             300,
             450
           ],
-          "got_kcal": 254.0,
+          "got_kcal": 1131.0,
           "in_range": false,
-          "pct_error": 32.3
-        },
-        {
-          "name": "rice",
-          "expected_range": [
-            200,
-            220
-          ],
-          "got_kcal": 105.0,
-          "in_range": false,
-          "pct_error": 50.0
+          "pct_error": 201.6
         }
       ]
+    },
+    {
+      "input": "grilled chicken salad",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "grilled chicken salad",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "grilled chicken salad",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              300,
+              450
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          300,
+          450
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "grilled chicken breast",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 165.0,
+            "protein_g": 31.0,
+            "carbs_g": 0.0,
+            "fat_g": 3.6,
+            "confidence": "medium"
+          },
+          {
+            "name": "mixed salad greens",
+            "quantity": 2.0,
+            "unit": "cup",
+            "calories_kcal": 15.0,
+            "protein_g": 1.0,
+            "carbs_g": 3.0,
+            "fat_g": 0.2,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 180.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "mixed salad greens"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "grilled chicken salad",
+          "expected_range": [
+            300,
+            450
+          ],
+          "got_kcal": 165.0,
+          "in_range": false,
+          "pct_error": 56.0
+        }
+      ]
+    },
+    {
+      "input": "a bowl of curd rice",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a bowl of curd rice",
+        "meal_type": "lunch",
+        "expected_items": [
+          {
+            "name": "curd rice",
+            "quantity": 1,
+            "unit": "bowl",
+            "calories_kcal_range": [
+              220,
+              320
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          220,
+          320
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "cooked rice",
+            "quantity": 1.0,
+            "unit": "cup",
+            "calories_kcal": 205.0,
+            "protein_g": 4.5,
+            "carbs_g": 45.0,
+            "fat_g": 0.4,
+            "confidence": "medium"
+          },
+          {
+            "name": "curd (yogurt)",
+            "quantity": 0.5,
+            "unit": "cup",
+            "calories_kcal": 60.0,
+            "protein_g": 5.0,
+            "carbs_g": 4.0,
+            "fat_g": 3.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 265.0,
+        "meal_type": "lunch"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "curd (yogurt)"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "curd rice",
+          "expected_range": [
+            220,
+            320
+          ],
+          "got_kcal": 205.0,
+          "in_range": false,
+          "pct_error": 24.1
+        }
+      ]
+    },
+    {
+      "input": "a plate of mixed vegetables with 2 rotis and dal",
+      "reason": "format_invalid_or_error",
+      "expected": {
+        "input": "a plate of mixed vegetables with 2 rotis and dal",
+        "meal_type": "dinner",
+        "expected_items": [
+          {
+            "name": "mixed vegetables",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              120,
+              200
+            ]
+          },
+          {
+            "name": "roti",
+            "quantity": 2,
+            "unit": "whole",
+            "calories_kcal_range": [
+              160,
+              200
+            ]
+          },
+          {
+            "name": "dal",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          430,
+          620
+        ]
+      },
+      "got": null,
+      "error": "[503] {'message': 'ResourceExhausted: Worker local total request limit reached (16/16)', 'type': 'Service Unavailable', 'code': 503}\n{'error': {'message': 'ResourceExhausted: Worker local total request limit reached (16/16)', 'type': 'Service Unavailable', 'code': 503}, 'status': 503}"
+    },
+    {
+      "input": "a cup of green tea",
+      "reason": "format_invalid_or_error",
+      "expected": {
+        "input": "a cup of green tea",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "green tea",
+            "quantity": 1,
+            "unit": "cup",
+            "calories_kcal_range": [
+              0,
+              5
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          0,
+          5
+        ]
+      },
+      "got": null,
+      "error": "[503] {'message': 'ResourceExhausted: Worker local total request limit reached (16/16)', 'type': 'Service Unavailable', 'code': 503}\n{'error': {'message': 'ResourceExhausted: Worker local total request limit reached (16/16)', 'type': 'Service Unavailable', 'code': 503}, 'status': 503}"
     }
   ],
-  "total_wall_clock_s": 88.5,
+  "total_wall_clock_s": 200.6,
   "dataset": "meals.jsonl"
 }

@@ -1,81 +1,30 @@
 {
-  "run_at": "2026-08-02T10:10:56Z",
-  "model": "qwen2.5:3b",
-  "n_examples": 10,
-  "format_valid_pct": 100.0,
-  "item_precision_pct": 100.0,
+  "run_at": "2026-09-12T15:16:06Z",
+  "model": [
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+  ],
+  "n_examples": 16,
+  "format_valid_pct": 93.8,
+  "item_precision_pct": 94.1,
   "item_recall_pct": 100.0,
-  "calorie_mape_pct": 47.2,
-  "confidence_calibration_score_pct": 20.0,
+  "calorie_mape_pct": 35.6,
+  "confidence_calibration_score_pct": 58.3,
   "confidence_calibration_detail": {
     "error_rate_by_confidence": {
-      "low": 0.4,
-      "medium": 0.8,
-      "high": 1.0
+      "low": 0.16666666666666666,
+      "medium": 0.625,
+      "high": 0.0
     },
     "n_items_by_confidence": {
-      "low": 5,
-      "medium": 5,
-      "high": 1
+      "low": 6,
+      "medium": 8,
+      "high": 2
     },
     "n_unlabeled_or_unmatched": 0,
-    "calibration_score": 20.0,
+    "calibration_score": 58.3,
     "note": null
   },
   "failures": [
-    {
-      "input": "a plate of pakora",
-      "reason": "calorie_out_of_range",
-      "expected": {
-        "input": "a plate of pakora",
-        "meal_type": "snack",
-        "expected_items": [
-          {
-            "name": "pakora",
-            "quantity": 1,
-            "unit": "plate",
-            "calories_kcal_range": [
-              250,
-              400
-            ]
-          }
-        ],
-        "expected_total_kcal_range": [
-          250,
-          400
-        ]
-      },
-      "got": {
-        "items": [
-          {
-            "name": "pakoras",
-            "quantity": 1.0,
-            "unit": "piece",
-            "calories_kcal": 200.0,
-            "protein_g": 5.0,
-            "carbs_g": 30.0,
-            "fat_g": 8.0,
-            "confidence": "medium"
-          }
-        ],
-        "total_kcal": 200.0,
-        "meal_type": "snack"
-      },
-      "unmatched_expected": [],
-      "unmatched_got": [],
-      "out_of_range_items": [
-        {
-          "name": "pakora",
-          "expected_range": [
-            250,
-            400
-          ],
-          "got_kcal": 200.0,
-          "in_range": false,
-          "pct_error": 38.5
-        }
-      ]
-    },
     {
       "input": "a cup of masala chai",
       "reason": "calorie_out_of_range",
@@ -104,63 +53,10 @@
             "name": "masala chai",
             "quantity": 1.0,
             "unit": "cup",
-            "calories_kcal": 30.0,
-            "protein_g": 0.0,
-            "carbs_g": 4.0,
-            "fat_g": 0.5,
-            "confidence": "low"
-          }
-        ],
-        "total_kcal": 30.0,
-        "meal_type": "drink"
-      },
-      "unmatched_expected": [],
-      "unmatched_got": [],
-      "out_of_range_items": [
-        {
-          "name": "masala chai",
-          "expected_range": [
-            80,
-            120
-          ],
-          "got_kcal": 30.0,
-          "in_range": false,
-          "pct_error": 70.0
-        }
-      ]
-    },
-    {
-      "input": "a handful of roasted peanuts",
-      "reason": "calorie_out_of_range",
-      "expected": {
-        "input": "a handful of roasted peanuts",
-        "meal_type": "snack",
-        "expected_items": [
-          {
-            "name": "roasted peanuts",
-            "quantity": 1,
-            "unit": "handful",
-            "calories_kcal_range": [
-              160,
-              200
-            ]
-          }
-        ],
-        "expected_total_kcal_range": [
-          160,
-          200
-        ]
-      },
-      "got": {
-        "items": [
-          {
-            "name": "roasted peanuts",
-            "quantity": 30.0,
-            "unit": "pieces",
             "calories_kcal": 150.0,
-            "protein_g": 6.4,
-            "carbs_g": 2.8,
-            "fat_g": 9.7,
+            "protein_g": 4.0,
+            "carbs_g": 20.0,
+            "fat_g": 5.0,
             "confidence": "medium"
           }
         ],
@@ -171,122 +67,94 @@
       "unmatched_got": [],
       "out_of_range_items": [
         {
-          "name": "roasted peanuts",
+          "name": "masala chai",
           "expected_range": [
-            160,
-            200
+            80,
+            120
           ],
           "got_kcal": 150.0,
           "in_range": false,
-          "pct_error": 16.7
+          "pct_error": 50.0
         }
       ]
     },
     {
-      "input": "a small packet of chips",
+      "input": "a small bowl of namkeen mixture",
       "reason": "calorie_out_of_range",
       "expected": {
-        "input": "a small packet of chips",
+        "input": "a small bowl of namkeen mixture",
         "meal_type": "snack",
         "expected_items": [
           {
-            "name": "chips",
+            "name": "namkeen mixture",
             "quantity": 1,
-            "unit": "packet",
+            "unit": "bowl",
             "calories_kcal_range": [
-              140,
-              180
-            ]
-          }
-        ],
-        "expected_total_kcal_range": [
-          140,
-          180
-        ]
-      },
-      "got": {
-        "items": [
-          {
-            "name": "chips",
-            "quantity": 1.0,
-            "unit": "piece",
-            "calories_kcal": 200.0,
-            "protein_g": 3.0,
-            "carbs_g": 45.0,
-            "fat_g": 9.0,
-            "confidence": "low"
-          }
-        ],
-        "total_kcal": 200.0,
-        "meal_type": "snack"
-      },
-      "unmatched_expected": [],
-      "unmatched_got": [],
-      "out_of_range_items": [
-        {
-          "name": "chips",
-          "expected_range": [
-            140,
-            180
-          ],
-          "got_kcal": 200.0,
-          "in_range": false,
-          "pct_error": 25.0
-        }
-      ]
-    },
-    {
-      "input": "a chocolate bar",
-      "reason": "calorie_out_of_range",
-      "expected": {
-        "input": "a chocolate bar",
-        "meal_type": "snack",
-        "expected_items": [
-          {
-            "name": "chocolate bar",
-            "quantity": 1,
-            "unit": "piece",
-            "calories_kcal_range": [
-              200,
+              150,
               250
             ]
           }
         ],
         "expected_total_kcal_range": [
-          200,
+          150,
           250
         ]
       },
       "got": {
         "items": [
           {
-            "name": "chocolate bar",
+            "name": "namkeen mixture",
             "quantity": 1.0,
-            "unit": "piece",
-            "calories_kcal": 500.0,
-            "protein_g": 2.0,
-            "carbs_g": 80.0,
-            "fat_g": 30.0,
-            "confidence": "medium"
+            "unit": "cup",
+            "calories_kcal": 600.0,
+            "protein_g": 15.0,
+            "carbs_g": 75.0,
+            "fat_g": 45.0,
+            "confidence": "low"
           }
         ],
-        "total_kcal": 500.0,
+        "total_kcal": 600.0,
         "meal_type": "snack"
       },
       "unmatched_expected": [],
       "unmatched_got": [],
       "out_of_range_items": [
         {
-          "name": "chocolate bar",
+          "name": "namkeen mixture",
           "expected_range": [
-            200,
+            150,
             250
           ],
-          "got_kcal": 500.0,
+          "got_kcal": 600.0,
           "in_range": false,
-          "pct_error": 122.2
+          "pct_error": 200.0
         }
       ]
+    },
+    {
+      "input": "a plate of bhel puri",
+      "reason": "format_invalid_or_error",
+      "expected": {
+        "input": "a plate of bhel puri",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "bhel puri",
+            "quantity": 1,
+            "unit": "plate",
+            "calories_kcal_range": [
+              150,
+              250
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          150,
+          250
+        ]
+      },
+      "got": null,
+      "error": "[503] {'message': 'ResourceExhausted: Worker local total request limit reached (16/16)', 'type': 'Service Unavailable', 'code': 503}\n{'error': {'message': 'ResourceExhausted: Worker local total request limit reached (16/16)', 'type': 'Service Unavailable', 'code': 503}, 'status': 503}"
     },
     {
       "input": "a cup of coffee with a biscuit",
@@ -325,24 +193,24 @@
             "name": "coffee",
             "quantity": 1.0,
             "unit": "cup",
-            "calories_kcal": 0.0,
+            "calories_kcal": 2.0,
             "protein_g": 0.0,
             "carbs_g": 0.0,
             "fat_g": 0.0,
-            "confidence": "low"
+            "confidence": "high"
           },
           {
             "name": "biscuit",
             "quantity": 1.0,
             "unit": "piece",
-            "calories_kcal": 28.0,
-            "protein_g": 0.5,
-            "carbs_g": 4.9,
-            "fat_g": 2.3,
-            "confidence": "high"
+            "calories_kcal": 150.0,
+            "protein_g": 3.0,
+            "carbs_g": 20.0,
+            "fat_g": 8.0,
+            "confidence": "medium"
           }
         ],
-        "total_kcal": 28.0,
+        "total_kcal": 152.0,
         "meal_type": "snack"
       },
       "unmatched_expected": [],
@@ -354,66 +222,184 @@
             70,
             100
           ],
-          "got_kcal": 28.0,
+          "got_kcal": 150.0,
           "in_range": false,
-          "pct_error": 67.1
+          "pct_error": 76.5
         }
       ]
     },
     {
-      "input": "a bowl of popcorn",
+      "input": "a plate of vada pav",
       "reason": "calorie_out_of_range",
       "expected": {
-        "input": "a bowl of popcorn",
+        "input": "a plate of vada pav",
         "meal_type": "snack",
         "expected_items": [
           {
-            "name": "popcorn",
+            "name": "vada pav",
             "quantity": 1,
-            "unit": "bowl",
+            "unit": "piece",
             "calories_kcal_range": [
-              90,
-              150
+              250,
+              350
             ]
           }
         ],
         "expected_total_kcal_range": [
-          90,
-          150
+          250,
+          350
         ]
       },
       "got": {
         "items": [
           {
-            "name": "popcorn",
+            "name": "vada",
             "quantity": 1.0,
-            "unit": "cup",
-            "calories_kcal": 31.0,
-            "protein_g": 0.6,
-            "carbs_g": 5.8,
-            "fat_g": 2.4,
+            "unit": "piece",
+            "calories_kcal": 200.0,
+            "protein_g": 6.0,
+            "carbs_g": 30.0,
+            "fat_g": 10.0,
+            "confidence": "medium"
+          },
+          {
+            "name": "pav",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 150.0,
+            "protein_g": 5.0,
+            "carbs_g": 25.0,
+            "fat_g": 2.0,
             "confidence": "medium"
           }
         ],
-        "total_kcal": 31.0,
+        "total_kcal": 350.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [
+        "pav"
+      ],
+      "out_of_range_items": [
+        {
+          "name": "vada pav",
+          "expected_range": [
+            250,
+            350
+          ],
+          "got_kcal": 200.0,
+          "in_range": false,
+          "pct_error": 33.3
+        }
+      ]
+    },
+    {
+      "input": "a slice of banana bread",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a slice of banana bread",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "banana bread",
+            "quantity": 1,
+            "unit": "slice",
+            "calories_kcal_range": [
+              150,
+              220
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          150,
+          220
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "banana bread",
+            "quantity": 1.0,
+            "unit": "slice",
+            "calories_kcal": 237.0,
+            "protein_g": 2.8,
+            "carbs_g": 41.0,
+            "fat_g": 8.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 237.0,
         "meal_type": "snack"
       },
       "unmatched_expected": [],
       "unmatched_got": [],
       "out_of_range_items": [
         {
-          "name": "popcorn",
+          "name": "banana bread",
+          "expected_range": [
+            150,
+            220
+          ],
+          "got_kcal": 237.0,
+          "in_range": false,
+          "pct_error": 28.1
+        }
+      ]
+    },
+    {
+      "input": "a granola bar",
+      "reason": "calorie_out_of_range",
+      "expected": {
+        "input": "a granola bar",
+        "meal_type": "snack",
+        "expected_items": [
+          {
+            "name": "granola bar",
+            "quantity": 1,
+            "unit": "piece",
+            "calories_kcal_range": [
+              90,
+              140
+            ]
+          }
+        ],
+        "expected_total_kcal_range": [
+          90,
+          140
+        ]
+      },
+      "got": {
+        "items": [
+          {
+            "name": "granola bar",
+            "quantity": 1.0,
+            "unit": "piece",
+            "calories_kcal": 180.0,
+            "protein_g": 4.0,
+            "carbs_g": 22.0,
+            "fat_g": 8.0,
+            "confidence": "medium"
+          }
+        ],
+        "total_kcal": 180.0,
+        "meal_type": "snack"
+      },
+      "unmatched_expected": [],
+      "unmatched_got": [],
+      "out_of_range_items": [
+        {
+          "name": "granola bar",
           "expected_range": [
             90,
-            150
+            140
           ],
-          "got_kcal": 31.0,
+          "got_kcal": 180.0,
           "in_range": false,
-          "pct_error": 74.2
+          "pct_error": 56.5
         }
       ]
     }
   ],
-  "total_wall_clock_s": 182.9,
+  "total_wall_clock_s": 185.8,
   "dataset": "snacks.jsonl"
 }
