@@ -541,6 +541,102 @@ def test_run_agent_dispatches_to_orchestrator_when_flag_true(monkeypatch):
     assert "react_loop" not in called
 
 
+# ---------------------------------------------------------------------------
+# _run_agent_react_loop tool-call dispatch -- Harmony tool-name leak fix
+# (openai/gpt-oss-20b via NVIDIA NIM intermittently leaks a trailing
+# "<|channel|>..." tag onto ai_message.tool_calls[i]["name"], e.g.
+# "calculate_calorie_goal<|channel|>commentary" instead of
+# "calculate_calorie_goal", which broke tools_dict.get(tool_name) with a
+# 500 "Unknown tool" error). No real LLM/network calls -- get_llm(tools=...)
+# is faked with a small stand-in whose .invoke() returns canned
+# AIMessage-shaped SimpleNamespace objects, same faking style as FakeLLM
+# above. The real tool functions from tools/registry.py are exercised
+# as-is (not mocked) so dispatch success is verified end-to-end past the
+# name lookup.
+# ---------------------------------------------------------------------------
+
+class FakeToolCallLLM:
+    """Returns one canned AIMessage-shaped response per `.invoke()` call, in
+    order. The final response must have empty tool_calls so the loop exits
+    cleanly with a final answer instead of hitting MAX_STEPS."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+
+    def invoke(self, messages):
+        return self._responses.pop(0)
+
+
+def _ai_message(tool_calls, content=""):
+    return SimpleNamespace(content=content, tool_calls=tool_calls)
+
+
+_FINAL_ANSWER = _ai_message([], content="done")
+
+
+def test_react_loop_dispatches_harmony_leaked_tool_name_correctly(monkeypatch, caplog):
+    """Bug repro: a leaked Harmony channel tag on the tool name must still
+    dispatch to the real tool (calculate_bmr), not raise 'Unknown tool'."""
+    leaked_call = {
+        "name": "calculate_bmr<|channel|>commentary",
+        "args": {"weight_kg": 75, "height_cm": 178, "age": 30, "gender": "male"},
+        "id": "call_1",
+    }
+    fake_llm = FakeToolCallLLM([_ai_message([leaked_call]), _FINAL_ANSWER])
+    monkeypatch.setattr(agent_service, "get_llm", lambda tools: fake_llm)
+
+    with caplog.at_level(logging.WARNING, logger="calai_backend.services.agent_service"):
+        result = agent_service._run_agent_react_loop("some message", llm=None)
+
+    assert result == AgentResponse(response="done", iterations_used=2)
+    warning_messages = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert any(
+        "sanitized Harmony-format tool name leak" in m
+        and "calculate_bmr<|channel|>commentary" in m
+        for m in warning_messages
+    )
+
+
+def test_react_loop_clean_tool_name_dispatches_unaffected(monkeypatch, caplog):
+    """A clean, uncorrupted tool name must dispatch normally, and the
+    sanitization warning path must NOT fire -- a future regression that
+    starts corrupting all names (or always taking the sanitize branch)
+    would otherwise go unnoticed."""
+    clean_call = {
+        "name": "calculate_tdee",
+        "args": {"bmr_kcal": 1500.0, "activity_level": "moderately_active"},
+        "id": "call_1",
+    }
+    fake_llm = FakeToolCallLLM([_ai_message([clean_call]), _FINAL_ANSWER])
+    monkeypatch.setattr(agent_service, "get_llm", lambda tools: fake_llm)
+
+    with caplog.at_level(logging.WARNING, logger="calai_backend.services.agent_service"):
+        result = agent_service._run_agent_react_loop("some message", llm=None)
+
+    assert result == AgentResponse(response="done", iterations_used=2)
+    warning_messages = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert not any("sanitized Harmony-format tool name leak" in m for m in warning_messages)
+
+
+def test_react_loop_corruption_leaving_empty_name_falls_through_to_unknown_tool_error(monkeypatch):
+    """Edge case: if the Harmony marker is at position 0 (nothing before it),
+    sanitizing yields an empty string. This must NOT silently match some
+    tool -- it must fall through to the existing 'Unknown tool' 500 error."""
+    empty_prefix_call = {
+        "name": "<|channel|>commentary",
+        "args": {},
+        "id": "call_1",
+    }
+    fake_llm = FakeToolCallLLM([_ai_message([empty_prefix_call])])
+    monkeypatch.setattr(agent_service, "get_llm", lambda tools: fake_llm)
+
+    with pytest.raises(HTTPException) as exc_info:
+        agent_service._run_agent_react_loop("some message", llm=None)
+
+    assert exc_info.value.status_code == 500
+    assert "Unknown tool" in exc_info.value.detail
+
+
 def test_run_agent_dispatches_to_react_loop_when_flag_false(monkeypatch):
     monkeypatch.setattr(agent_service, "USE_ORCHESTRATOR", False)
     sentinel = AgentResponse(response="from react loop", iterations_used=3)

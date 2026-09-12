@@ -1,0 +1,50 @@
+{
+  "_what_this_is": "Re-measurement of adr003-latency-comparison.json's ReAct-vs-Orchestrator comparison, run against NVIDIA NIM (ADR-006) instead of local Ollama, using the same evals/latency_comparison.py script and the same 3 representative messages. This is a direct sequel to the Ollama-era measurement, not a replacement for it (that file documents a real historical result and is kept as-is).",
+  "run_context": {
+    "models": ["nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", "openai/gpt-oss-20b"],
+    "date": "2026-09-12",
+    "adr": "ADR-006 (archdocs/ADR-006-nvidia-nim-migration.md) re-measurement of ADR-003's latency claim",
+    "script": "evals/latency_comparison.py",
+    "runs_per_message_per_path": 1,
+    "note": "Single-run timing against live NIM endpoints, not a statistical study — same caveat as the original Ollama measurement applies here, doubly so given the anomalous result below."
+  },
+  "results": [
+    {
+      "label": "profile_only",
+      "message": "I'm a 28 year old male, 75kg, 178cm tall, moderately active, and I want to lose weight at 0.5kg per week.",
+      "react_loop_s": null,
+      "orchestrator_s": 5.42,
+      "speedup_x": null,
+      "note": "react_loop errored, see known_issue below — no valid speedup can be computed for this row"
+    },
+    {
+      "label": "meal_only",
+      "message": "I just had 2 eggs and a slice of toast for breakfast.",
+      "react_loop_s": 33.71,
+      "orchestrator_s": 22.30,
+      "speedup_x": 1.51
+    },
+    {
+      "label": "profile_and_meal",
+      "message": "I'm a 25 year old female, 60kg, 165cm, lightly active, trying to maintain. I had a bowl of oatmeal with banana for breakfast.",
+      "react_loop_s": 47.45,
+      "orchestrator_s": 64.27,
+      "speedup_x": 0.74,
+      "note": "Orchestrator was SLOWER than the ReAct loop on this message — the inverse of the Ollama-era result."
+    }
+  ],
+  "totals": {
+    "react_loop_total_s": 94.93,
+    "orchestrator_total_s": 91.99,
+    "overall_speedup_x": 1.03,
+    "note": "As printed by the script; profile_only's failed react_loop run is excluded from this total, not treated as 0s or infinite — read the per-message rows, not just this total, since it hides that the orchestrator lost on 1 of 2 comparable rows."
+  },
+  "known_issue_found": {
+    "description": "The legacy ReAct loop (_run_agent_react_loop) failed outright on the profile_only message.",
+    "error": "500: Unknown tool: calculate_tdee<|channel|>commentary",
+    "interpretation": "openai/gpt-oss-20b (the new ADR-006 fallback model) emits OpenAI's 'Harmony' multi-channel response format (<|channel|>analysis / <|channel|>commentary tokens) for its tool-calling output. Whatever parses the tool name on the legacy ReAct path is not stripping/handling these channel tokens, so a real tool name gets corrupted with a trailing channel tag and the dispatch fails. This did not affect the Orchestrator path (which uses get_json_llm()'s structured-JSON mode, not native tool-calling) or the eval harness (also structured JSON, not tool-calling) — it's specific to native LangChain .bind_tools()-style tool calling against gpt-oss-20b via NIM.",
+    "scope": "Only reachable via USE_ORCHESTRATOR=false (legacy path, not the default). Not yet fixed — flagged here as a known limitation of the current 2-model fallback chain, not silently worked around.",
+    "not_investigated": "Whether this reproduces on every gpt-oss-20b tool-calling attempt or was specific to this one request/model routing (i.e. whether the primary model would have been used instead, and this only surfaced because it fell through to gpt-oss-20b on this particular call)."
+  },
+  "headline_conclusion": "The Ollama-era 2.25x speedup does not hold on NVIDIA NIM. Total speedup dropped to ~1.03x, and the orchestrator was measurably SLOWER on the mixed profile+meal message. The structural argument (bounded LLM calls beat an unbounded tool-choosing loop) still applies in principle, but network-hosted NIM latency is dominated by different factors (network round-trip, provider-side queueing/rate-limiting, per-model latency variance between nemotron and gpt-oss-20b) than local-Ollama latency (dominated by local inference + model load), so the two providers are not comparable on this metric and the old headline number should not be quoted as current."
+}

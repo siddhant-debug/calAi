@@ -8,6 +8,15 @@
 > adds a code-level regression this retrospective missed, and proposes the target pattern.
 > Where the two sections disagree, the review section is the later and better-evidenced read.
 
+> **2026-09-12 note:** everything below was measured against local Ollama (`qwen2.5:3b`).
+> ADR-006 (2026-09-11/12) fully replaced Ollama with NVIDIA NIM — a network API call, not a
+> local model, which changes the latency profile this document's structural argument (fewer/
+> bounded LLM calls beats an unbounded tool-choosing loop) is built on. The *reasoning* here
+> (why the Orchestrator should be faster) still holds; the *specific numbers* (2.25x, 176s,
+> etc.) are Ollama-era and have not been restated as NVIDIA numbers, to avoid rewriting
+> history. See `adr003-latency-comparison-nvidia-nim.json` for the post-migration
+> re-measurement and whether the speedup held.
+
 ## The headline numbers, restated plainly
 
 - **Speed:** orchestrator was 2.25x faster overall (179.04s vs 402.93s across 3 representative messages — see `artefacts/adr003-latency-comparison.json`). That's the biggest, least ambiguous win.

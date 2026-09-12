@@ -46,7 +46,9 @@ Full methodology, report-field glossary, and how to add a new golden example: [`
 
 `/api/agent` used to run a single ReAct loop — an LLM deciding, one tool call at a time, which of `calculate_bmr`/`calculate_tdee`/`calculate_calorie_goal`/`parse_meal_text` to call and in what order. [`archdocs/ADR-003-multiagent-split.md`](archdocs/ADR-003-multiagent-split.md) replaced that with a deterministic `Orchestrator`: plain-Python routing based on which fields a request implies, calling a pure-Python `CalcPipeline` and an isolated `MealParseAgent` directly — no LLM decides *whether* to call `calculate_bmr`, because that was never actually an ambiguous decision.
 
-**Measured result** (3 representative messages, real local-model calls — see [`artefacts/adr003-latency-comparison.json`](artefacts/adr003-latency-comparison.json)):
+**The structural argument still holds, and it's separable from any one provider's numbers:** the ReAct loop's cost scales with how many steps the model chooses to take (up to `MAX_STEPS=8`) before converging — unpredictable. The Orchestrator's cost is two bounded LLM calls plus fixed-cost Python, because the routing decision itself was never something that needed a language model's judgment. Whether that structural advantage shows up as a big number depends entirely on what dominates latency for the LLM provider in use — which is exactly what re-measuring this after a provider swap found out.
+
+**Original measurement, local Ollama (`qwen2.5:3b`), 2026-08-02** — see [`artefacts/adr003-latency-comparison.json`](artefacts/adr003-latency-comparison.json):
 
 | Message shape | Old ReAct loop | Orchestrator | Speedup |
 |---|---|---|---|
@@ -55,7 +57,18 @@ Full methodology, report-field glossary, and how to add a new golden example: [`
 | Profile + meal | 176.0s | 74.0s | 2.38x |
 | **Total** | **402.9s** | **179.0s** | **2.25x** |
 
-**Why:** the ReAct loop's cost scaled with how many steps the model chose to take (up to `MAX_STEPS=8`) before converging — unpredictable, and expensive on a small local model with no GPU. The Orchestrator's cost is two bounded LLM calls plus fixed-cost Python, because the routing decision itself was never something that needed a language model's judgment.
+**Re-measured on NVIDIA NIM (ADR-006), 2026-09-12 — the 2.25x claim does not hold here.** See [`artefacts/adr003-latency-comparison-nvidia-nim.json`](artefacts/adr003-latency-comparison-nvidia-nim.json):
+
+| Message shape | Old ReAct loop | Orchestrator | Speedup |
+|---|---|---|---|
+| Profile only | *(errored — see below)* | 5.4s | — |
+| Meal only | 33.7s | 22.3s | 1.51x |
+| Profile + meal | 47.5s | 64.3s | **0.74x (orchestrator was slower)** |
+| **Total** | **94.9s** | **92.0s** | **1.03x** |
+
+Local-Ollama latency was dominated by local inference and model load — exactly what the Orchestrator's "fewer, bounded LLM calls" design targets. NIM latency is dominated by network round-trips, provider-side queueing, and per-model variance between `nemotron-3-nano-omni` and `openai/gpt-oss-20b` — a different bottleneck the Orchestrator's structural advantage barely touches. The old 2.25x number is a real historical result on a different stack, not a claim about the system as it runs today; it's kept in the record rather than restated, per the same principle that keeps `evals/report/archive/` around.
+
+**This re-measurement also surfaced a real bug, not just a smaller number:** the legacy ReAct loop failed outright on the profile-only message — `500: Unknown tool: calculate_tdee<|channel|>commentary`. `openai/gpt-oss-20b` (the new ADR-006 fallback model) emits OpenAI's "Harmony" multi-channel response format for tool calls, and whatever parses the tool name on that path isn't stripping the channel tokens, corrupting the name before dispatch. It doesn't affect the default Orchestrator path (which uses structured-JSON mode, not native tool-calling) — logged as a known, unfixed limitation of the current fallback chain rather than quietly patched around.
 
 **This wasn't only a speed win.** On the "profile only" message, the old ReAct loop's LLM-computed TDEE diverged sharply from the correct value (**3726 kcal reported vs. 2678 kcal actual** — the deterministic `CalcPipeline` result) on identical input. A small local model was quietly getting arithmetic wrong when the design let it "help" with a calculation it was only supposed to sequence, not perform. That's a correctness bug the latency comparison surfaced as a side effect, not the headline it was measuring for.
 
@@ -315,7 +328,7 @@ Runs the Orchestrator by default (deterministic routing + `CalcPipeline` + `Meal
 |---|---|
 | [ADR-001](archdocs/ADR-001-calai-architecture.md) | Initial architecture — tools, agent loop, FastAPI split from the learning-track CLI |
 | [ADR-002](archdocs/ADR-002-react-agent-design.md) | ReAct agent design — the original single-loop tool-calling approach |
-| [ADR-003](archdocs/ADR-003-multiagent-split.md) | Split the ReAct loop into a deterministic `Orchestrator` + `CalcPipeline` + `MealParseAgent` — 2.25x measured speedup, see [Why the Orchestrator is faster](#why-the-orchestrator-is-faster) |
+| [ADR-003](archdocs/ADR-003-multiagent-split.md) | Split the ReAct loop into a deterministic `Orchestrator` + `CalcPipeline` + `MealParseAgent` — 2.25x speedup on Ollama, ~1.0x re-measured on NVIDIA NIM, see [Why the Orchestrator is faster](#why-the-orchestrator-is-faster) |
 | [ADR-004](archdocs/ADR-004-eval-harness.md) | The eval harness itself — why golden ranges, why 5 scoring dimensions, why this gates ADR-003 and every model/prompt change since |
 | [ADR-005](archdocs/ADR-005-router-handler-registry.md) | Router → Handler Registry with bounded ReAct as escape hatch — proposed, mid-flight, not yet fully implemented |
 | [ADR-006](archdocs/ADR-006-nvidia-nim-migration.md) | Full replacement of local Ollama with NVIDIA NIM — no rollback flag, fallback-chain design |
@@ -323,7 +336,9 @@ Runs the Orchestrator by default (deterministic routing + `CalcPipeline` + `Meal
 **Supporting evidence (`artefacts/`):**
 
 - [`NOTES-orchestrator-vs-react.md`](artefacts/NOTES-orchestrator-vs-react.md) — the honest retrospective on ADR-003, including a second-pass self-review that corrects its own first-pass claims
-- [`adr003-latency-comparison.json`](artefacts/adr003-latency-comparison.json) — raw timing data behind the 2.25x figure
+- [`adr003-latency-comparison.json`](artefacts/adr003-latency-comparison.json) — raw timing data behind the original 2.25x figure (Ollama, historical)
+- [`adr003-latency-comparison-nvidia-nim.json`](artefacts/adr003-latency-comparison-nvidia-nim.json) — re-measurement on NVIDIA NIM, including the `gpt-oss-20b` tool-calling bug it surfaced
+- [`adr003-eval-parity-snapshot.json`](artefacts/adr003-eval-parity-snapshot.json) — frozen eval scores at the exact ADR-003 comparison points
 
 **Process:**
 

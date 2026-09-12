@@ -1,5 +1,6 @@
 {
   "_what_this_is": "Frozen snapshot of evals/report/latest.json's top-level scores at the moment ADR-003 Action Items 4 and 7 confirmed parity between the pre-split parse_meal_text baseline and the extracted MealParseAgent / post-Orchestrator-rewrite path. evals/report/latest.json will keep changing as future runs happen; this file exists so the specific comparison point ADR-003 cites doesn't drift or get overwritten.",
+  "_historical_note": "All numbers below are from 2026-08-01/08-02, against qwen2.5:3b via local Ollama — this predates ADR-006 (2026-09-11/12), which fully replaced Ollama with NVIDIA NIM. This snapshot is intentionally left as-is (it documents a specific historical comparison point, not current state) rather than restated with NVIDIA numbers. The current committed baseline is evals/report/latest.json; a historical pre-migration baseline is separately archived at evals/report/archive/baseline-2026-08-01-qwen2.5-3b-33ex.json.",
   "baseline": {
     "run_at": "2026-08-01T14:xx (Session 3, pre-split parse_meal_text)",
     "model": "qwen2.5:3b",

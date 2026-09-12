@@ -1,5 +1,6 @@
 {
   "_what_this_is": "ADR-003 Action Item 7 result: real-Ollama latency comparison between the old ReAct loop (_run_agent_react_loop) and the new Orchestrator (_run_agent_orchestrator) in calai_backend/services/agent_service.py. Produced by evals/latency_comparison.py, which prints to stdout and does not persist a file itself — this JSON is a transcription of that run's output, captured by the sdlc-orchestrator/reviewer stage that executed it, so the numbers are preserved as a durable artifact instead of living only in an agent report.",
+  "_historical_note": "This measurement is against local Ollama (qwen2.5:3b) and predates ADR-006 (2026-09-11/12), which fully replaced Ollama with NVIDIA NIM (network round-trip calls, different latency profile entirely). Left as-is rather than restated with NVIDIA numbers, since it documents a specific historical comparison, not current state. See adr003-latency-comparison-nvidia-nim.json for the post-migration re-measurement.",
   "run_context": {
     "model": "qwen2.5:3b",
     "date": "2026-08-02",

@@ -401,6 +401,23 @@ def _run_agent_react_loop(message: str, llm: BaseChatModel | None) -> AgentRespo
         messages.append(ai_message)
         for tool_call in ai_message.tool_calls:
             tool_name = tool_call["name"]
+            # Some models (observed: openai/gpt-oss-20b via NVIDIA NIM, which
+            # emits OpenAI's "Harmony" multi-channel format) leak a trailing
+            # special-token tag onto the tool name coming out of
+            # ai_message.tool_calls, e.g. "calculate_tdee<|channel|>commentary"
+            # instead of "calculate_tdee". Strip anything from the first
+            # "<|...|>"-style marker onward before using the name to look up
+            # the tool, so this doesn't corrupt dispatch. Log when this
+            # actually changes something so a genuinely different "unknown
+            # tool" bug doesn't get silently swallowed by this.
+            harmony_marker = tool_name.find("<|")
+            if harmony_marker != -1:
+                sanitized_name = tool_name[:harmony_marker]
+                log.warning(
+                    "[Tool Selected]  sanitized Harmony-format tool name leak: %r -> %r",
+                    tool_name, sanitized_name,
+                )
+                tool_name = sanitized_name
             tool_args = tool_call["args"]
             log.info("[Tool Selected]  %s  args=%s", tool_name, tool_args)
 
