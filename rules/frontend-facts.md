@@ -6,9 +6,10 @@
   `Colors.*` constants — always `AppColors.*` from `lib/core/app_theme.dart`.
 - **Request field names.** `meal_text` not `text`; `goal_rate_kg_per_week`; the 5-value
   `activity_level` enum — match `skills/flutter-dev/SKILL.md` field-for-field.
-- **Error handling.** The backend's `detail` field may be either a string or a list (see
-  `rules/backend-facts.md`'s error-envelope note — it isn't normalized everywhere yet). Frontend
-  error handling must tolerate both until that's fixed project-wide.
+- **Error handling.** As of the P1 fix (2026-09-14), every backend error response is one shape:
+  `{"detail": {"message": <string>, "errors": <list|null>}}`. Read `detail.message` for display
+  text; `detail.errors` is non-null only on 422 validation failures. Do not write "string or
+  list" tolerance code — that was the pre-fix shape and is now wrong.
 - **Native assets crash** (`Couldn't resolve native function 'DOBJC_initializeApi'`): fix with
   `flutter clean && flutter pub get`, not a code change.
 - **Architecture layering.** Models are plain Dart, no Flutter imports. `api_service.dart` is

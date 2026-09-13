@@ -4,13 +4,24 @@ import httpx
 from fastapi import HTTPException
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from calai_backend.config import MAX_STEPS, USE_ORCHESTRATOR
 from calai_backend.logging_config import bind_correlation_id, get_logger
 from calai_backend.prompts.calai_prompt import SYSTEM_PROMPT
 from calai_backend.providers.llm import get_json_llm, get_llm
-from calai_backend.schemas import AgentResponse, CalcRequest, CalcResponse, Intent, ParsedRequest
+from calai_backend.schemas import (
+    AgentMessageType,
+    AgentResponse,
+    CalcRequest,
+    CalcResponse,
+    Intent,
+    ParsedRequest,
+    ProfileConfirmationPayload,
+    RecommendationPayload,
+    SlotFillPayload,
+    WeeklyCheckinPayload,
+)
 from calai_backend.services.calc_pipeline import run_calc_pipeline
 from calai_backend.services.llm_call import llm_call
 from calai_backend.services.meal_parse_agent import parse_meal
@@ -30,6 +41,26 @@ log = get_logger(__name__)
 _PROFILE_FIELD_NAMES = (
     "weight_kg", "height_cm", "age", "gender", "activity_level", "goal", "goal_rate_kg_per_week",
 )
+
+# goal_rate_kg_per_week has a schema default (CalcRequest) -- it is never a
+# "missing" field for slot-filling purposes, matching the required_present
+# check below.
+_REQUIRED_PROFILE_FIELD_NAMES = tuple(f for f in _PROFILE_FIELD_NAMES if f != "goal_rate_kg_per_week")
+
+
+class _ParsedRequestWithMissing(ParsedRequest):
+    """ADR-007 Action Item 4/5 support, `agent_service.py`-local only (not in
+    schemas.py -- ADR-005's NeedsMoreInfo.missing does not concretely exist
+    yet, see SlotFillPayload's docstring). Subclasses ParsedRequest so every
+    existing `isinstance(parsed, ParsedRequest)` check and attribute access
+    (`.profile`, `.meal_text`, `.meal_type`, `.intent`) keeps working
+    unchanged; this only adds one extra field carrying the same
+    profile-field-presence information extract_request_fields already
+    computes internally, so the orchestrator can build a precise
+    SlotFillPayload.missing list without a second LLM call or reimplementing
+    the presence check.
+    """
+    missing_profile_fields: list[str] = Field(default_factory=list)
 
 EXTRACTION_PROMPT = """You are a structured data extractor for a calorie-tracking app.
 Read the user's message and extract ONLY the fields explicitly present in it.
@@ -146,6 +177,11 @@ def extract_request_fields(message: str, llm: BaseChatModel | None) -> ParsedReq
     if meal_text and not meal_type:
         meal_type = "snack"
 
+    # ADR-007 Action Item 4/5: reuse the same profile_fields presence check
+    # above (not a second pass) to compute which required CalcRequest fields
+    # are still null, for SlotFillPayload.missing.
+    missing_profile_fields = [k for k in _REQUIRED_PROFILE_FIELD_NAMES if profile_fields[k] is None]
+
     # ADR-005 contract 2: `intent` is a soft signal, never a hard validation
     # gate. Coerce a missing/unrecognized value to Intent.UNKNOWN instead of
     # raising — see _ExtractedFieldsSchema's docstring for why this coercion
@@ -164,7 +200,10 @@ def extract_request_fields(message: str, llm: BaseChatModel | None) -> ParsedReq
             )
             intent = Intent.UNKNOWN
 
-    parsed = ParsedRequest(profile=profile, meal_text=meal_text, meal_type=meal_type, intent=intent)
+    parsed = _ParsedRequestWithMissing(
+        profile=profile, meal_text=meal_text, meal_type=meal_type, intent=intent,
+        missing_profile_fields=missing_profile_fields,
+    )
     log.debug(
         "[extract_request_fields] classified intent=%s from raw_fields=%s",
         intent.value, raw.model_dump(),
@@ -214,6 +253,27 @@ def compose_response(calc: CalcResponse | None, meal: dict | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# ADR-007 Action Item 6 -- recommendation trigger heuristic.
+#
+# The ADR explicitly leaves "when to recommend" as an open orchestration
+# judgment call (Open Questions), not a fixed spec. Minimal, documented
+# heuristic: a RECOMMENDATION is only composed when the client has already
+# sent a *confirmed* profile as request context (AgentRequest.profile) AND
+# the free-text message explicitly asks for one. This keeps the existing
+# default behavior (no `profile` context passed) completely unaffected.
+# ---------------------------------------------------------------------------
+
+_RECOMMENDATION_KEYWORDS = (
+    "recommend", "should i", "adjust my", "change my goal", "update my goal", "new goal",
+)
+
+
+def _wants_recommendation(message: str) -> bool:
+    lowered = message.lower()
+    return any(kw in lowered for kw in _RECOMMENDATION_KEYWORDS)
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator — ADR-003 Action Item 6.
 #
 # Plain Python, no LLM loop: one structured-extraction call, then at most two
@@ -222,12 +282,43 @@ def compose_response(calc: CalcResponse | None, meal: dict | None) -> str:
 # out of scope here — ADR-003/ADR-001 still haven't implemented it.
 # ---------------------------------------------------------------------------
 
-def _run_agent_orchestrator(message: str, llm: BaseChatModel | None) -> AgentResponse:
+def _run_agent_orchestrator(
+    message: str,
+    llm: BaseChatModel | None,
+    profile: CalcRequest | None = None,
+    trigger: str = "message",
+) -> AgentResponse:
     # ADR-005 contract 6: bind one correlation id for this request's entire
     # call tree (generates a UUID4 since routes.py doesn't yet supply one).
     # Purely additive infra — does not touch the presence-based dispatch
     # logic below; see ADR-005 sub-stage 1c for the Intent-routing change.
     with bind_correlation_id() as correlation_id:
+        # ADR-007 Action Item 5: weekly_checkin short-circuits everything
+        # else, including `message` content -- no LLM/pipeline call happens
+        # on this path, so there is no ADR-007 Part-1 failure mode to guard
+        # here (nothing that can raise httpx/ValueError).
+        if trigger == "weekly_checkin":
+            last_weight_kg = profile.weight_kg if profile is not None else None
+            log.debug(
+                "[orchestrator] decision handler=weekly_checkin intent=n/a outcome=composed "
+                "message_type=%s latency_ms=%.1f correlation_id=%s",
+                AgentMessageType.WEEKLY_CHECKIN.value, 0.0, correlation_id,
+            )
+            response_text = (
+                "It's time for your weekly check-in — what's your current weight?"
+                if last_weight_kg is None
+                else (
+                    f"It's time for your weekly check-in — your last recorded weight was "
+                    f"{last_weight_kg:.1f} kg. What's your current weight today?"
+                )
+            )
+            return AgentResponse(
+                response=response_text,
+                iterations_used=0,
+                message_type=AgentMessageType.WEEKLY_CHECKIN,
+                weekly_checkin=WeeklyCheckinPayload(last_weight_kg=last_weight_kg),
+            )
+
         t_start = time.perf_counter()
         log.info("=" * 60)
         log.info("[orchestrator] correlation_id=%s Input: %s", correlation_id, message)
@@ -246,10 +337,25 @@ def _run_agent_orchestrator(message: str, llm: BaseChatModel | None) -> AgentRes
             parsed_request = extract_request_fields(message, llm)
 
             calc = None
+            calc_error: ValueError | None = None
             if parsed_request.profile:
                 t0 = time.perf_counter()
-                calc = run_calc_pipeline(parsed_request.profile)
-                log.info("[orchestrator] CalcPipeline ran in %.1fms", (time.perf_counter() - t0) * 1000)
+                try:
+                    calc = run_calc_pipeline(parsed_request.profile)
+                    log.info("[orchestrator] CalcPipeline ran in %.1fms", (time.perf_counter() - t0) * 1000)
+                except ValueError as e:
+                    # ADR-007 Action Item 7: a calc-pipeline failure backing
+                    # the profile_confirmation payload must degrade to INFO,
+                    # not propagate as a 422 -- deferred to the composition
+                    # section below (message_type dispatch) instead of the
+                    # generic ValueError->422 translation a few lines down,
+                    # which still applies unchanged to every other case
+                    # (calc failure on a non-set_profile-intent message is
+                    # not "backing one of the four ADR-007 payload types").
+                    if parsed_request.intent == Intent.SET_PROFILE:
+                        calc_error = e
+                    else:
+                        raise
 
             meal = None
             if parsed_request.meal_text:
@@ -310,25 +416,162 @@ def _run_agent_orchestrator(message: str, llm: BaseChatModel | None) -> AgentRes
         # to the old field's meaning ("how much work did this request cause").
         iterations_used = sum(1 for step in (calc, meal) if step is not None)
 
-        response_text = compose_response(calc, meal)
+        # -------------------------------------------------------------------
+        # ADR-007 Action Item 4: message_type + exactly one matching payload
+        # field. Default is INFO + all four payloads None (today's behavior,
+        # unchanged) -- the branches below are additive, evaluated in order,
+        # mutually exclusive (if/elif chain, never more than one non-None
+        # payload). Each branch is wrapped per Action Item 7: a failure while
+        # composing a structured payload degrades to INFO with a plain
+        # response string, never an unhandled exception.
+        # -------------------------------------------------------------------
+        message_type = AgentMessageType.INFO
+        slot_fill = None
+        profile_confirmation = None
+        recommendation = None
+        response_text = None
+
+        if parsed_request.profile is not None and parsed_request.intent == Intent.SET_PROFILE:
+            # Action Item 6: the user just supplied a complete profile via
+            # free text -- show a confirmation with a computed preview
+            # before it's persisted client-side. `calc` above was already
+            # computed via run_calc_pipeline (the same deterministic
+            # pipeline /api/calculate uses) for this exact profile, so reuse
+            # it rather than invoking the pipeline a second time.
+            try:
+                if calc_error is not None:
+                    raise calc_error
+                preview = calc if calc is not None else run_calc_pipeline(parsed_request.profile)
+                profile_confirmation = ProfileConfirmationPayload(profile=parsed_request.profile, preview=preview)
+                message_type = AgentMessageType.PROFILE_CONFIRMATION
+                response_text = (
+                    f"Here's your profile summary — daily target {preview.calorie_goal_kcal:.0f} kcal "
+                    f"(BMR {preview.bmr_kcal:.0f}, TDEE {preview.tdee_kcal:.0f}). Confirm to save it."
+                )
+                log.debug(
+                    "[orchestrator] decision handler=profile_confirmation intent=%s outcome=composed "
+                    "message_type=%s latency_ms=%.1f correlation_id=%s",
+                    parsed_request.intent.value, message_type.value,
+                    (time.perf_counter() - t_start) * 1000, correlation_id,
+                )
+            except (ValueError, TypeError) as e:
+                log.warning(
+                    "[orchestrator] decision handler=profile_confirmation outcome=fallback "
+                    "message_type=%s error=%s correlation_id=%s",
+                    AgentMessageType.INFO.value, e, correlation_id,
+                )
+                message_type = AgentMessageType.INFO
+                profile_confirmation = None
+                response_text = "I couldn't confirm your profile right now — try again in a moment."
+
+        elif parsed_request.profile is None and parsed_request.intent == Intent.SET_PROFILE:
+            # Action Item 4/5 support: the message clearly contains profile
+            # info (LLM classified intent=set_profile) but not all required
+            # fields -- ask for what's missing rather than silently dropping
+            # the partial info on the floor.
+            try:
+                missing = list(
+                    getattr(parsed_request, "missing_profile_fields", None) or _REQUIRED_PROFILE_FIELD_NAMES
+                )
+                slot_fill = SlotFillPayload(missing=missing)
+                message_type = AgentMessageType.SLOT_FILL_QUESTION
+                response_text = (
+                    "I need a few more details before I can calculate your calorie goal: "
+                    + ", ".join(missing) + "."
+                )
+                log.debug(
+                    "[orchestrator] decision handler=slot_fill intent=%s outcome=composed "
+                    "message_type=%s missing=%s latency_ms=%.1f correlation_id=%s",
+                    parsed_request.intent.value, message_type.value, missing,
+                    (time.perf_counter() - t_start) * 1000, correlation_id,
+                )
+            except (ValueError, TypeError) as e:
+                log.warning(
+                    "[orchestrator] decision handler=slot_fill outcome=fallback "
+                    "message_type=%s error=%s correlation_id=%s",
+                    AgentMessageType.INFO.value, e, correlation_id,
+                )
+                message_type = AgentMessageType.INFO
+                slot_fill = None
+                response_text = "I couldn't process your profile details right now — try again in a moment."
+
+        elif profile is not None and _wants_recommendation(message):
+            # Recommendation trigger heuristic -- see _wants_recommendation's
+            # docstring/comment above. Uses the client's already-confirmed
+            # `profile` request context (AgentRequest.profile), not the
+            # message-extracted `parsed_request.profile`.
+            try:
+                rec_preview = run_calc_pipeline(profile)
+                rationale = (
+                    f"Based on your current profile ({profile.goal} at "
+                    f"{profile.goal_rate_kg_per_week}kg/week), your recommended calorie goal is "
+                    f"{rec_preview.calorie_goal_kcal:.0f} kcal/day."
+                )
+                recommendation = RecommendationPayload(
+                    calorie_goal_kcal=rec_preview.calorie_goal_kcal,
+                    tdee_kcal=rec_preview.tdee_kcal,
+                    bmr_kcal=rec_preview.bmr_kcal,
+                    rationale=rationale,
+                )
+                message_type = AgentMessageType.RECOMMENDATION
+                response_text = rationale
+                log.debug(
+                    "[orchestrator] decision handler=recommendation intent=%s outcome=composed "
+                    "message_type=%s latency_ms=%.1f correlation_id=%s",
+                    parsed_request.intent.value, message_type.value,
+                    (time.perf_counter() - t_start) * 1000, correlation_id,
+                )
+            except (ValueError, TypeError) as e:
+                log.warning(
+                    "[orchestrator] decision handler=recommendation outcome=fallback "
+                    "message_type=%s error=%s correlation_id=%s",
+                    AgentMessageType.INFO.value, e, correlation_id,
+                )
+                message_type = AgentMessageType.INFO
+                recommendation = None
+                response_text = "I couldn't put together a recommendation right now — try again in a moment."
+
+        if response_text is None:
+            response_text = compose_response(calc, meal)
+
         total_ms = (time.perf_counter() - t_start) * 1000
         log.info(
-            "[orchestrator] Done  correlation_id=%s  iterations_used=%d  total_time=%.1fms",
-            correlation_id, iterations_used, total_ms,
+            "[orchestrator] Done  correlation_id=%s  iterations_used=%d  message_type=%s  total_time=%.1fms",
+            correlation_id, iterations_used, message_type.value, total_ms,
         )
 
-        return AgentResponse(response=response_text, iterations_used=iterations_used)
+        return AgentResponse(
+            response=response_text,
+            iterations_used=iterations_used,
+            message_type=message_type,
+            slot_fill=slot_fill,
+            profile_confirmation=profile_confirmation,
+            recommendation=recommendation,
+        )
 
 
-def run_agent(message: str, llm: BaseChatModel | None) -> AgentResponse:
-    """Public entry point for /api/agent. Signature is unchanged (ADR-003).
+def run_agent(
+    message: str,
+    llm: BaseChatModel | None,
+    profile: CalcRequest | None = None,
+    trigger: str = "message",
+) -> AgentResponse:
+    """Public entry point for /api/agent.
+
+    ADR-007 Action Item 5: gained optional `profile`/`trigger` (mirroring
+    AgentRequest's new fields) so the orchestrator can produce
+    weekly_checkin/recommendation-typed responses using client-supplied
+    context. Both default such that an old call site (`run_agent(message,
+    llm)`) is unchanged.
 
     Routes to the new Orchestrator by default; set USE_ORCHESTRATOR=false to
     roll back to the old ReAct loop (_run_agent_react_loop) without a code
-    change (see calai_backend/config.py).
+    change (see calai_backend/config.py). The ReAct loop does not consume
+    profile/trigger -- it predates ADR-007 and is not being extended here
+    (ADR-003 Migration Plan: kept for rollback only).
     """
     if USE_ORCHESTRATOR:
-        return _run_agent_orchestrator(message, llm)
+        return _run_agent_orchestrator(message, llm, profile=profile, trigger=trigger)
     return _run_agent_react_loop(message, llm)
 
 

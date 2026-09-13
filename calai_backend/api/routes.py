@@ -108,4 +108,4 @@ def agent(req: AgentRequest) -> AgentResponse:
     (agent_service.py::_run_agent_react_loop). `llm=None` is passed for
     signature parity with `run_agent(message, llm)`.
     """
-    return run_agent(req.message, None)
+    return run_agent(req.message, None, profile=req.profile, trigger=req.trigger)

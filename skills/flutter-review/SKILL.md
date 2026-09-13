@@ -30,9 +30,11 @@ Report all issues found, even if the user didn't ask about them.
 - [ ] `POST /api/parse-meal` body uses **`meal_text`** (not `text`), optional `meal_type`
 - [ ] `POST /api/calculate` uses `activity_level` from the 5-value enum (`moderately_active`,
       not `moderate`) and `goal_rate_kg_per_week` (not `rate_kg_per_week`), value `> 0`
-- [ ] Error handling copes with the backend's error envelope in **both** shapes — hand-written
-      `HTTPException` gives `detail` as a *string*, FastAPI validation gives a *list of dicts*.
-      A bare `detail as String` cast is a bug until the backend normalizes this
+- [ ] Error handling reads the backend's normalized error envelope (fixed 2026-09-14): every
+      error response is `{"detail": {"message": <string>, "errors": <list|null>}}` — read
+      `detail.message` for display text, `detail.errors` (non-null only on 422 validation
+      failures) for field-level detail. A bare `detail as String` cast is a bug against this
+      shape; so is code still branching on "string vs list" for `detail` itself
 - [ ] Storage keys match the spec exactly, if the client-side storage option is in force
       (persistence is an open decision — see `flutter-dev/SKILL.md` "Decisions pending")
 - [ ] Ring fill clamped to `[0.0, 1.0]` before painting

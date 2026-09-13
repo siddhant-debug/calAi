@@ -21,6 +21,21 @@ abstract final class AppColors {
 
   // Accent — interactive highlight
   static const Color accentIce = Color(0xFF6FECFF);
+
+  /// Zone colour signal (see skills/flutter-dev/SKILL.md) — reused wherever
+  /// a kcal figure needs a colour signal: status strip hero number/accent
+  /// line, history sheet per-day dots. `progress` is not clamped here so
+  /// >115% still reads red; clamp separately for any width/fill maths.
+  static Color zoneColor(double progress) {
+    if (progress < 0.80) return signalGrey;
+    if (progress <= 1.00) {
+      return Color.lerp(signalGrey, signalGreen, (progress - 0.80) / 0.20)!;
+    }
+    if (progress <= 1.15) {
+      return Color.lerp(signalGreen, signalAmber, (progress - 1.00) / 0.15)!;
+    }
+    return Color.lerp(signalAmber, signalRed, ((progress - 1.15) / 0.10).clamp(0.0, 1.0))!;
+  }
 }
 
 // ─── Text styles ──────────────────────────────────────────────────────────────

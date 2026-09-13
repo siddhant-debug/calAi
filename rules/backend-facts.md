@@ -17,12 +17,17 @@
 - **`MAX_STEPS = 8`** is the legacy ReAct loop's iteration cap, defined in `config.py`
   (`backend-engineer`'s file) but governs `ai-engineer`'s orchestration logic
   (`USE_ORCHESTRATOR=false` path only) — same hand-off rule as `LLM_MODELS`.
-- **One error envelope, always.** Every error path on every endpoint must return the same
-  `detail` shape. Hand-written `HTTPException(detail=str(...))` returns a string; FastAPI's own
-  Pydantic validation errors return `{"detail": [...]}` (a list of `{loc, msg, type}` dicts) —
-  same key, two incompatible shapes. Normalize (a shared exception handler is the clean fix)
-  rather than adding a third shape. **Not yet done project-wide** — until it is, frontend error
-  handling must tolerate both shapes (see `rules/frontend-facts.md`).
+- **One error envelope, always.** `calai_backend/main.py` registers two exception handlers
+  (`HTTPException` and `RequestValidationError`) that normalize every error path — hand-rolled
+  `HTTPException(detail=...)` calls in routes/services and FastAPI's own request-validation
+  failures — into one shape: `{"detail": {"message": <str>, "errors": <list[dict] | null>}}`.
+  `errors` is the raw Pydantic error list on a 422 validation failure, `null` otherwise. Status
+  codes are unchanged (400/404/422/500/502/503/504 etc.) — only the body shape normalized.
+  **Done as of the P1 error-envelope unit** — frontend code written against the old two-shape
+  contract (a bare `detail as String` or `detail as List` cast) needs updating; see
+  `rules/invariants.md`'s entry for the now-stale "tolerate both shapes" compensation and
+  `skills/flutter-review/SKILL.md`'s error-handling checklist item, both of which still describe
+  the pre-normalization contract.
 - **CORS.** Any endpoint reachable from a browser (`calai_frontend` web builds) needs
   `CORSMiddleware` scoped to the actual calling origin. `flutter run -d chrome` binds a new
   random port every run, so scope by `allow_origin_regex` (e.g. `http://localhost:\d+` for local

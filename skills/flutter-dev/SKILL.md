@@ -33,8 +33,8 @@ the new signature element). Suggested breakdown below; the exact file split is
 2. `lib/models/meal_entry.dart` — now needs a status field: `pending | logged | error` (see
    "Entry card" states)
 3. `lib/core/storage_service.dart`
-4. `lib/core/api_service.dart` — add the `/api/agent` call (contract shape is ADR-007's job,
-   not this spec's)
+4. `lib/core/api_service.dart` — add the `/api/agent` call; contract shape is resolved by
+   ADR-007 (discriminated `message_type` + typed payloads, see "Decisions pending" row 1)
 5. `lib/providers/user_provider.dart`
 6. `lib/providers/meal_provider.dart` — now session-scoped (keyed by date)
 7. `lib/widgets/meal_input_bar.dart`
@@ -65,23 +65,25 @@ Tell the user to replace `<LOCAL_IP>` with their Mac's LAN IP (required for real
   **The field is `meal_text`, not `text`** — sending `text` returns HTTP 422.
 - `POST /api/agent` → now **required** by conversational onboarding, profile updates,
   recommendations, and the weekly weight check-in. It is not called for a plain meal log — that
-  goes straight to `/api/parse-meal` and logs silently (see "Log silently"). Today it returns
-  prose only; a structured response contract is ADR-007's job
-  (`plans/v1-product-brief.md` "Needs an ADR" item 2), not this spec's — this spec describes
-  what the response must be able to render (a slot-filling question, a profile-confirmation
-  payload, a recommendation, a weight check-in prompt) without inventing its JSON shape.
+  goes straight to `/api/parse-meal` and logs silently (see "Log silently"). The structured
+  response contract is resolved by ADR-007 (backend Action Items 1-9 implemented, 142/142 tests
+  passing): `AgentResponse` carries a `message_type` discriminator (`info` \| `slot_fill_question`
+  \| `profile_confirmation` \| `recommendation` \| `weekly_checkin`) plus exactly one matching
+  optional typed payload field (`slot_fill`, `profile_confirmation` with a computed calorie
+  `preview`, `recommendation`, `weekly_checkin`) — see ADR-007 Part 1 for the exact Pydantic
+  schema `flutter-engineer`'s Dart-side `AgentMessageType` enum must mirror.
 
 **State management:** Riverpod 3 (`flutter_riverpod ^3.4.3`) — use `Notifier` / `AsyncNotifier`
 (**not** `StateNotifierProvider`, which is the Riverpod 2 API). Expose `AsyncValue` so screens
 can render loading / error / data states — required because `/api/parse-meal` takes 9–40s (see
 "Entry card" pending state below, which replaces the old bare enabled/disabled input bar).
 
-**Storage:** persistence model (client-side `SharedPreferences` vs server-side) is an **open
-architecture decision**, not a UI one — deferred to ADR-007
-(`plans/v1-product-brief.md` "Needs an ADR" item 1). These screens are written against provider
-state, not a specific storage backend, so they don't block on this. Whatever the ADR picks, the
+**Storage:** persistence model resolved by ADR-007 Part 3 — client-side `SharedPreferences`,
+no server-side store. These screens are written against provider state, not the storage backend
+directly, so screen implementation doesn't block on `storage_service.dart` landing first. The
 shapes providers must expose are: a profile (possibly partial, mid-slot-filling), per-date
-sessions of entries, a weight-history list, and the last weekly-check-in timestamp.
+sessions of entries, a weight-history list, and the last weekly-check-in timestamp — see ADR-007
+Part 3 for the exact `StorageService` interface and `SharedPreferences` key names.
 
 **Navigation:** go_router — `/` redirects to `/onboarding` (no profile) or `/home` (has profile).
 `/home` is today's session by default; opening a past day via the history sheet is an in-place
@@ -107,8 +109,8 @@ state.
 
 | # | Open question | Status |
 |---|---|---|
-| 1 | `POST /api/agent` structured response contract | **Open — ADR-007's job.** This spec (below) describes what the UI must be able to render from it (slot-filling question, profile confirmation, recommendation, weekly check-in prompt); it does not define the JSON shape. `architecture-designer` owns this next. |
-| 2 | Persistence model — client-side vs server-side | **Open — ADR-007's job.** Screens are written against provider state, storage-backend-agnostic. |
+| 1 | `POST /api/agent` structured response contract | **Resolved — ADR-007 Part 1.** `AgentResponse` gains a `message_type` discriminator (`AgentMessageType`: `info` \| `slot_fill_question` \| `profile_confirmation` \| `recommendation` \| `weekly_checkin`, default `info`) plus four mutually-exclusive optional typed payload fields (`slot_fill`, `profile_confirmation`, `recommendation`, `weekly_checkin`); `response`/`iterations_used` are unchanged. `flutter-engineer` switches on `message_type` and reads exactly the matching payload field — no prose parsing. See ADR-007 for the exact schema. |
+| 2 | Persistence model — client-side vs server-side | **Resolved — ADR-007 Part 3.** Client-side `SharedPreferences`, no server-side store, no `user_id`/auth. `core/storage_service.dart` implements the `StorageService` interface ADR-007 specifies exactly (`loadProfile`/`saveProfile`/`clearProfile`, `loadEntriesForDate`/`appendEntry`/`deleteEntry`, `loadWeightHistory`/`appendWeightSample`, `loadLastCheckinAt`/`saveLastCheckinAt`), backed by JSON-encoded `SharedPreferences` keys (`profile`, `entries_<yyyy-MM-dd>`, `weight_history`, `last_checkin_at`). See ADR-007 for the exact contract. |
 
 Resolved by this spec (previously rows 1–5 of the old table):
 
@@ -513,20 +515,20 @@ Update the session memory implementation state table:
 
 | File | Status | Notes |
 |------|--------|-------|
-| models/user_profile.dart | ⬜ | supports partial state during onboarding |
-| models/meal_entry.dart   | ⬜ | needs `pending / logged / error` status |
-| core/storage_service.dart| ⬜ | persistence model pending ADR-007 |
-| core/api_service.dart    | ⬜ | add `/api/agent` call, contract pending ADR-007 |
-| providers/user_provider.dart | ⬜ | |
-| providers/meal_provider.dart | ⬜ | session-scoped by date |
-| widgets/meal_input_bar.dart | ⬜ | always-enabled during send |
-| widgets/agent_message.dart | ⬜ | new |
-| widgets/entry_card.dart | ⬜ | new, 3 states |
-| widgets/status_strip.dart | ⬜ | new |
-| widgets/history_sheet.dart | ⬜ | new |
-| screens/onboarding_screen.dart | ⬜ | conversational, not PageView |
-| screens/home_screen.dart | ⬜ | today's diary/session screen |
-| main.dart                | ⬜ | |
+| models/user_profile.dart | ✅ | supports partial state during onboarding |
+| models/meal_entry.dart   | ✅ | needs `pending / logged / error` status |
+| core/storage_service.dart| ✅ | implements ADR-007 Part 3's `StorageService` contract (client-side `SharedPreferences`) |
+| core/api_service.dart    | ✅ | add `/api/agent` call against ADR-007 Part 1's resolved `message_type`/payload contract |
+| providers/user_provider.dart | ✅ | also holds `calorieGoalProvider` and the onboarding conversation notifier |
+| providers/meal_provider.dart | ✅ | session-scoped by date |
+| widgets/meal_input_bar.dart | ✅ | always-enabled during send; `onSubmit` now `ValueChanged<String>?` |
+| widgets/agent_message.dart | ✅ | new; recommendation/weekly-checkin layouts composed from existing primitives only, not literally spec'd — flagged to ui-engineer |
+| widgets/entry_card.dart | ✅ | new, 3 states |
+| widgets/status_strip.dart | ✅ | new |
+| widgets/history_sheet.dart | ✅ | new; "vs expected weight · week N of M" line omitted — no stored program-start date/duration to compute it, see flutter-engineer report |
+| screens/onboarding_screen.dart | ✅ | conversational, not PageView |
+| screens/home_screen.dart | ✅ | today's diary/session screen; ListTile/Material crash fixed (no ListTile used) |
+| main.dart                | ✅ | `/` redirect via go_router `refreshListenable` bridged to `userProvider` |
 
 Retired: `widgets/day_ring.dart` — do not implement.
 

@@ -84,13 +84,32 @@ def test_agent_route_returns_200_with_agent_response_shape(monkeypatch):
     from calai_backend.schemas import AgentResponse
 
     monkeypatch.setattr(
-        routes, "run_agent", lambda message, llm: AgentResponse(response="hello back", iterations_used=1)
+        routes, "run_agent",
+        lambda message, llm, profile=None, trigger="message": AgentResponse(
+            response="hello back", iterations_used=1
+        ),
     )
 
     response = client.post("/api/agent", json={"message": "hi"})
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body.keys()) == {"response", "iterations_used"}
+    # ADR-007: AgentResponse gained message_type + 4 optional payload fields
+    # (additive). A response built without them still defaults message_type
+    # to "info" and all four payloads to None.
+    assert set(body.keys()) == {
+        "response",
+        "iterations_used",
+        "message_type",
+        "slot_fill",
+        "profile_confirmation",
+        "recommendation",
+        "weekly_checkin",
+    }
     assert body["response"] == "hello back"
     assert body["iterations_used"] == 1
+    assert body["message_type"] == "info"
+    assert body["slot_fill"] is None
+    assert body["profile_confirmation"] is None
+    assert body["recommendation"] is None
+    assert body["weekly_checkin"] is None

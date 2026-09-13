@@ -15,8 +15,16 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
-from calai_backend.schemas import AgentResponse, CalcRequest, CalcResponse, Intent, ParsedRequest
+from calai_backend.schemas import (
+    AgentMessageType,
+    AgentResponse,
+    CalcRequest,
+    CalcResponse,
+    Intent,
+    ParsedRequest,
+)
 from calai_backend.services import agent_service
+from calai_backend.services.calc_pipeline import run_calc_pipeline
 
 
 class FakeLLM:
@@ -523,7 +531,7 @@ def test_run_agent_dispatches_to_orchestrator_when_flag_true(monkeypatch):
     sentinel = AgentResponse(response="from orchestrator", iterations_used=1)
     called = {}
 
-    def fake_orchestrator(message, llm):
+    def fake_orchestrator(message, llm, profile=None, trigger="message"):
         called["orchestrator"] = (message, llm)
         return sentinel
 
@@ -635,6 +643,168 @@ def test_react_loop_corruption_leaving_empty_name_falls_through_to_unknown_tool_
 
     assert exc_info.value.status_code == 500
     assert "Unknown tool" in exc_info.value.detail
+
+
+# ---------------------------------------------------------------------------
+# ADR-007 Action Item 4 -- message_type dispatch + exactly-one-payload
+# invariant, one test per branch, plus the failure-degradation path (Action
+# Item 7) and a byte-for-byte regression guard on the pre-existing plain-INFO
+# default. No real LLM/pipeline calls -- extract_request_fields/
+# run_calc_pipeline are monkeypatched consistently with _patch_steps above.
+# ---------------------------------------------------------------------------
+
+def _assert_only_payload(result, field_name):
+    """Assert exactly one of the four AgentResponse payload fields is
+    non-None, and it's `field_name`."""
+    payload_fields = ("slot_fill", "profile_confirmation", "recommendation", "weekly_checkin")
+    for f in payload_fields:
+        value = getattr(result, f)
+        if f == field_name:
+            assert value is not None, f"expected {f} to be populated"
+        else:
+            assert value is None, f"expected {f} to be None, got {value!r}"
+
+
+def test_orchestrator_weekly_checkin_trigger_short_circuits(monkeypatch):
+    """Bug/behavior: trigger='weekly_checkin' must skip extraction entirely
+    (ignores `message`) and return message_type=WEEKLY_CHECKIN with
+    last_weight_kg sourced from `profile.weight_kg`."""
+    def fail_if_called(message, llm):
+        raise AssertionError("extract_request_fields must not be called on weekly_checkin trigger")
+
+    monkeypatch.setattr(agent_service, "extract_request_fields", fail_if_called)
+    profile = CalcRequest(**FULL_PROFILE_FIELDS)
+
+    result = agent_service._run_agent_orchestrator(
+        "this text is ignored", llm=object(), profile=profile, trigger="weekly_checkin",
+    )
+
+    assert result.message_type == AgentMessageType.WEEKLY_CHECKIN
+    _assert_only_payload(result, "weekly_checkin")
+    assert result.weekly_checkin.last_weight_kg == profile.weight_kg
+    assert result.iterations_used == 0
+
+
+def test_orchestrator_weekly_checkin_without_profile_has_none_last_weight(monkeypatch):
+    def fail_if_called(message, llm):
+        raise AssertionError("extract_request_fields must not be called on weekly_checkin trigger")
+
+    monkeypatch.setattr(agent_service, "extract_request_fields", fail_if_called)
+
+    result = agent_service._run_agent_orchestrator(
+        "ignored", llm=object(), profile=None, trigger="weekly_checkin",
+    )
+
+    assert result.message_type == AgentMessageType.WEEKLY_CHECKIN
+    assert result.weekly_checkin.last_weight_kg is None
+
+
+def test_orchestrator_profile_confirmation_when_set_profile_intent_complete(monkeypatch):
+    profile = CalcRequest(**FULL_PROFILE_FIELDS)
+    parsed = ParsedRequest(profile=profile, meal_text=None, meal_type=None, intent=Intent.SET_PROFILE)
+    monkeypatch.setattr(agent_service, "extract_request_fields", lambda message, llm: parsed)
+    monkeypatch.setattr(agent_service, "run_calc_pipeline", lambda p: _calc())
+
+    result = agent_service._run_agent_orchestrator("i weigh 75kg...", llm=object())
+
+    assert result.message_type == AgentMessageType.PROFILE_CONFIRMATION
+    _assert_only_payload(result, "profile_confirmation")
+    assert result.profile_confirmation.profile == profile
+    assert result.profile_confirmation.preview == _calc()
+
+
+def test_orchestrator_profile_confirmation_preview_matches_real_calc_pipeline(monkeypatch):
+    """ADR-007 review requirement: ProfileConfirmationPayload.preview must not
+    reimplement the BMR/TDEE/goal math -- it must equal whatever the real
+    run_calc_pipeline (the same function backing /api/calculate) returns for
+    the identical profile. This test does NOT mock run_calc_pipeline, so it
+    calls the real deterministic pipeline both inside the orchestrator and
+    independently here, and compares the two results instead of hardcoding
+    a number that could silently drift."""
+    profile = CalcRequest(**FULL_PROFILE_FIELDS)
+    parsed = ParsedRequest(profile=profile, meal_text=None, meal_type=None, intent=Intent.SET_PROFILE)
+    monkeypatch.setattr(agent_service, "extract_request_fields", lambda message, llm: parsed)
+
+    result = agent_service._run_agent_orchestrator("i weigh 75kg...", llm=object())
+
+    expected = run_calc_pipeline(profile)
+    assert result.message_type == AgentMessageType.PROFILE_CONFIRMATION
+    assert result.profile_confirmation.preview == expected
+
+
+def test_orchestrator_slot_fill_question_when_set_profile_intent_incomplete(monkeypatch):
+    parsed = ParsedRequest(profile=None, meal_text=None, meal_type=None, intent=Intent.SET_PROFILE)
+    monkeypatch.setattr(agent_service, "extract_request_fields", lambda message, llm: parsed)
+
+    result = agent_service._run_agent_orchestrator("i weigh 75kg", llm=object())
+
+    assert result.message_type == AgentMessageType.SLOT_FILL_QUESTION
+    _assert_only_payload(result, "slot_fill")
+    assert set(result.slot_fill.missing) == set(agent_service._REQUIRED_PROFILE_FIELD_NAMES)
+
+
+def test_orchestrator_recommendation_when_client_profile_and_keyword_present(monkeypatch):
+    client_profile = CalcRequest(**FULL_PROFILE_FIELDS)
+    parsed = ParsedRequest(profile=None, meal_text=None, meal_type=None, intent=Intent.UNKNOWN)
+    monkeypatch.setattr(agent_service, "extract_request_fields", lambda message, llm: parsed)
+    monkeypatch.setattr(agent_service, "run_calc_pipeline", lambda p: _calc())
+
+    result = agent_service._run_agent_orchestrator(
+        "should I adjust my goal?", llm=object(), profile=client_profile,
+    )
+
+    assert result.message_type == AgentMessageType.RECOMMENDATION
+    _assert_only_payload(result, "recommendation")
+    assert result.recommendation.calorie_goal_kcal == _calc().calorie_goal_kcal
+    assert result.recommendation.tdee_kcal == _calc().tdee_kcal
+    assert result.recommendation.bmr_kcal == _calc().bmr_kcal
+
+
+def test_orchestrator_info_default_unchanged_regression(monkeypatch):
+    """Regression guard: today's default plain-INFO path (no SET_PROFILE
+    intent, no recommendation keywords, trigger='message') must produce
+    exactly the same AgentResponse shape as before ADR-007 -- message_type
+    INFO and all four new payload fields None."""
+    calls = _patch_steps(
+        monkeypatch,
+        profile=CalcRequest(**FULL_PROFILE_FIELDS),
+        meal_text="two eggs",
+        meal_type="breakfast",
+    )
+
+    result = agent_service._run_agent_orchestrator("msg", llm=object())
+
+    assert result == AgentResponse(
+        response="composed response",
+        iterations_used=2,
+        message_type=AgentMessageType.INFO,
+        slot_fill=None,
+        profile_confirmation=None,
+        recommendation=None,
+        weekly_checkin=None,
+    )
+
+
+def test_orchestrator_profile_confirmation_degrades_to_info_on_calc_pipeline_valueerror(monkeypatch):
+    """ADR-007 Action Item 7 failure-degradation path: a ValueError raised
+    while composing the profile_confirmation payload must degrade to
+    message_type=INFO with profile_confirmation=None and a plain-language
+    response, never propagate as an unhandled exception / 500."""
+    profile = CalcRequest(**FULL_PROFILE_FIELDS)
+    parsed = ParsedRequest(profile=profile, meal_text=None, meal_type=None, intent=Intent.SET_PROFILE)
+    monkeypatch.setattr(agent_service, "extract_request_fields", lambda message, llm: parsed)
+
+    def raise_value_error(p):
+        raise ValueError("boom: implausible TDEE")
+
+    monkeypatch.setattr(agent_service, "run_calc_pipeline", raise_value_error)
+
+    result = agent_service._run_agent_orchestrator("i weigh 75kg...", llm=object())
+
+    assert result.message_type == AgentMessageType.INFO
+    assert result.profile_confirmation is None
+    _assert_only_payload(result, None)  # every payload field is None
+    assert "couldn't confirm" in result.response
 
 
 def test_run_agent_dispatches_to_react_loop_when_flag_false(monkeypatch):

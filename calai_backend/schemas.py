@@ -21,11 +21,67 @@ class CalcResponse(BaseModel):
 
 class AgentRequest(BaseModel):
     message: str
+    profile: CalcRequest | None = None
+    """The client's currently-confirmed profile, if any — sent as context on every
+    call so the backend can reference it (e.g. weekly_checkin's last_weight_kg,
+    recommendation math) without a server-side lookup. None during onboarding,
+    before any profile is confirmed."""
+    trigger: Literal["message", "weekly_checkin"] = "message"
+    """"message" (default): process `message` as free text, exactly today's behavior.
+    "weekly_checkin": the client has locally determined a check-in is due and is
+    explicitly requesting a weekly_checkin-typed AgentResponse; `message` is
+    ignored server-side in this mode."""
+
+
+class AgentMessageType(str, Enum):
+    """Mirrors the Intent enum's (str, Enum) pattern. Discriminates which of
+    AgentResponse's four optional payload fields, if any, is populated.
+    Exactly one of {slot_fill, profile_confirmation, recommendation, weekly_checkin}
+    is non-None when message_type != INFO; all four are None when message_type == INFO."""
+    INFO = "info"
+    SLOT_FILL_QUESTION = "slot_fill_question"
+    PROFILE_CONFIRMATION = "profile_confirmation"
+    RECOMMENDATION = "recommendation"
+    WEEKLY_CHECKIN = "weekly_checkin"
+
+
+class SlotFillPayload(BaseModel):
+    missing: list[str]
+    """Exact field-name list, reusing ADR-005's NeedsMoreInfo.missing naming and
+    contents verbatim when the orchestrator/handler layer already computes it."""
+
+
+class ProfileConfirmationPayload(BaseModel):
+    profile: CalcRequest
+    """The fully-extracted, not-yet-confirmed profile — same shape /api/calculate
+    accepts, so 'Confirm' in the UI can POST this object to /api/calculate unchanged."""
+    preview: CalcResponse
+    """bmr_kcal/tdee_kcal/calorie_goal_kcal computed from `profile` via the same
+    deterministic calc pipeline /api/calculate uses. Computing this preview does
+    not persist or confirm the profile."""
+
+
+class RecommendationPayload(BaseModel):
+    calorie_goal_kcal: float
+    tdee_kcal: float
+    bmr_kcal: float
+    rationale: str
+    """Short human-readable reason for the recommendation. Always present."""
+
+
+class WeeklyCheckinPayload(BaseModel):
+    last_weight_kg: float | None = None
+    """Most recent weight on record, if any. None on a client's very first check-in."""
 
 
 class AgentResponse(BaseModel):
     response: str
     iterations_used: int
+    message_type: AgentMessageType = AgentMessageType.INFO
+    slot_fill: SlotFillPayload | None = None
+    profile_confirmation: ProfileConfirmationPayload | None = None
+    recommendation: RecommendationPayload | None = None
+    weekly_checkin: WeeklyCheckinPayload | None = None
 
 
 class MealParseRequest(BaseModel):
