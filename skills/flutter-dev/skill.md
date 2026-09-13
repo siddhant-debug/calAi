@@ -488,6 +488,7 @@ Centred vertically in the entry feed area.
   JSON responses)
 - Keep widgets small; no `CustomPainter` widgets are needed for this spec (the ring that used
   one is retired) — flag it to `ui-engineer` before adding one
+- Colour alpha: always `.withValues(alpha: x)` — `.withOpacity()` is deprecated
 - Run `dart analyze lib/<file>` after each file; fix all errors before moving on.
   **Never `flutter analyze`** — it crashes with a missing snapshot in this install.
 - After implementing a screen, run it and confirm the golden path works. iOS on-device
