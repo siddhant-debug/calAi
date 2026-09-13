@@ -5,7 +5,7 @@ description: Test the calAI Flutter frontend — widget tests, integration check
 
 # calAI Flutter Test Skill
 
-You are testing the calAI Flutter frontend. Read `skills/flutter-dev/skill.md` first — it is
+You are testing the calAI Flutter frontend. Read `skills/flutter-dev/SKILL.md` first — it is
 the source of truth for expected behaviour. `archdocs/frontendidea.md` is background intent and
 is **not final**; never write a test asserting behaviour that only appears there.
 
@@ -24,7 +24,7 @@ Fix all errors and warnings before proceeding.
 
 Test file location: `calai_frontend/test/`
 
-**Behaviour facts come from `skills/flutter-dev/skill.md`, not from this file.** Where that spec
+**Behaviour facts come from `skills/flutter-dev/SKILL.md`, not from this file.** Where that spec
 lists an item under "Decisions pending", there is nothing to test yet — do not invent the
 expected behaviour. Say it's blocked and move on.
 
@@ -32,7 +32,7 @@ expected behaviour. Say it's blocked and move on.
 
 **`day_ring.dart`** (fully specified — safe to test)
 - Renders without error at 0%, 80%, 100%, 115%, 150% fill
-- Correct colour per the thresholds in `flutter-dev/skill.md` "Day ring colour logic"
+- Correct colour per the thresholds in `flutter-dev/SKILL.md` "Day ring colour logic"
 - Center text shows correct kcal integer
 - Golden test for each of the above states
 

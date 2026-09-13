@@ -5,7 +5,7 @@ gap it closes. Apply in Step 1–2 of `07-action-plan.md`.
 
 ---
 
-## 1. `skills/flutter-dev/skill.md` (G8)
+## 1. `skills/flutter-dev/SKILL.md` (G8)
 
 **API calls block** — replace:
 ```
@@ -36,7 +36,7 @@ and add: `Colour alpha: always .withValues(alpha: x), never .withOpacity()`.
 - In-flight state for 9–40 s calls (design required)
 ```
 
-## 2. `skills/flutter-test/skill.md` (G8, G9)
+## 2. `skills/flutter-test/SKILL.md` (G8, G9)
 
 - Step 1: `flutter analyze` → `dart analyze lib`.
 - Step 4 curl bodies → replace with:
@@ -48,14 +48,14 @@ curl -X POST http://localhost:8000/api/parse-meal -H "Content-Type: application/
   -d '{"meal_text":"2 eggs and toast","meal_type":"breakfast"}'
 ```
 - Remove behavior assertions that are undecided ("button replaced with spinner", "5 rings
-  Mon–Fri ISO week"); replace with `per skills/flutter-dev/skill.md §<heading>` references.
+  Mon–Fri ISO week"); replace with `per skills/flutter-dev/SKILL.md §<heading>` references.
 - Add: `Widget tests must not call the network; use ProviderScope overrides with fake services.`
 
-## 3. `skills/flutter-review/skill.md` (G8, G9)
+## 3. `skills/flutter-review/SKILL.md` (G8, G9)
 
 - Step 2: `flutter analyze lib/<file>` → `dart analyze lib/<file>`.
 - Correctness: replace the two Mon–Fri ISO-week lines with
-  `Ring range and totals window match skills/flutter-dev/skill.md "Day ring" section`.
+  `Ring range and totals window match skills/flutter-dev/SKILL.md "Day ring" section`.
 - Add under Correctness: `Error handling covers the single backend error envelope (detail may
   be string or list until Step 4 lands — check both)`.
 

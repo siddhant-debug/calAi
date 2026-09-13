@@ -6,16 +6,19 @@ For a task the user wants taken end-to-end without stage-by-stage supervision, h
 
 ## Agents & ownership
 
-| Agent | Owns | Never touches |
-|---|---|---|
-| `architecture-designer` | New ADRs in `archdocs/`, design contracts and migration plans | Implementation code (any language) |
-| `backend-engineer` | `calai_backend/main.py`, `api/routes.py`, `config.py`, `schemas.py` — HTTP surface: CORS, request/response envelopes, status codes, boundary validation, env-var wiring | `calai_backend/services/`, `providers/`, `tools/`, `prompts/`, `calai_agent.py` (LLM/agent logic — that's `ai-engineer`), Flutter code, visual design |
-| `ai-engineer` | `calai_backend/services/`, `providers/`, `tools/`, `prompts/`, `calai_agent.py`, SQLite meal-schema semantics, agent/LLM logic | The HTTP surface (`main.py`, `api/routes.py`, `config.py`, `schemas.py` — that's `backend-engineer`), Flutter code, visual design |
-| `ui-engineer` | Design tokens, layout, UX spec (`skills/flutter-dev/skill.md` spec sections, `archdocs/frontendidea.md`) | `.dart` implementation |
-| `flutter-engineer` | `calai_frontend/lib/**/*.dart` | New visual design, backend contracts |
-| `tester` | Writes/maintains pytest suites, `evals/dataset/*.jsonl` cases (ADR-004), Flutter tests | Gating — doesn't decide pass/fail, doesn't edit product code |
-| `reviewer` | Read-only review + running tests/evals as the pass/fail gate | Editing anything |
-| `sdlc-orchestrator` | Autonomous end-to-end pipeline execution (spawns the above stages itself) | Doing engineering/testing/review work directly |
+See `rules/ownership.md` for the full file→agent table. Every agent file links back to it —
+it's the single source, don't restate it when editing an agent's scope.
+
+## Layers
+
+- `rules/` — volatile hard facts more than one agent needs (env-var contract, ownership table,
+  backend/frontend facts, gate commands, things that look removable and aren't). Single-sourced;
+  agent files and this file reference it rather than restating it.
+- `.claude/agents/` — role, ownership boundary, and report contract per agent. Thin by design —
+  each file is that agent's system prompt, loaded on every spawn.
+- `skills/` — procedures and reference, loaded on demand.
+- `CLAUDE.md` (this file) — pipelines, handoff contract, escalation rules.
+- `.claude/scripts/` — hooks; automatic, unskippable.
 
 ## Standard pipelines
 
@@ -56,12 +59,22 @@ When an agent reports back, extract and forward only what the next stage needs; 
 
 - Every unit of work from `backend-engineer`, `ai-engineer`, or `flutter-engineer` goes through `tester` then `reviewer` before it's called done. No exceptions for "small" changes that touch logic.
 - Each agent has a **Definition of Done** checklist at the end of its own file. Ticking it is part of the work, not a formality — `reviewer` treats a missed DoD item (no logging at a decision point, a stale doc stating a field name you changed) as a bucket-1 finding.
-- `reviewer` **runs the gates itself and cites exit codes** — `pytest`, `dart analyze`, and `run_eval.py --gate` when a prompt/model changed. An unrun gate is an open finding, not a pass.
-- `sdlc-orchestrator` writes `artefacts/runs/<date>-<unit_id>.md` and updates the executed plan/ADR's status header as part of the run.
+- `reviewer` **runs the gates itself and cites exit codes** — see `rules/gates.md` for the exact commands (there is no root `tests/`; use the `calai_backend/tests` path). An unrun gate is an open finding, not a pass.
+- `reviewer`'s report ends with a `verdict: pass | fail` field — that field, not its prose, is what `sdlc-orchestrator` and the dispatcher act on.
+- `sdlc-orchestrator` writes `artefacts/runs/<date>-<unit_id>.md` and updates the executed plan/ADR's status header as part of the run — it holds `Write`/`Edit` for exactly those two things, nothing else.
 - Reviewer findings in bucket 1 (**bugs/correctness**) go back to the owning engineer as a fix brief. If the bug reveals missing coverage, `tester` adds a regression case for it first, then re-review.
 - Max **2** fix loops per unit of work; if issues persist, stop and escalate to the user with the open findings.
-- Bucket 2 (**simplification**) findings: apply if cheap, otherwise report to the user as optional.
-- When a unit of work makes a previously-optional `.env` value required (an API key with no default/fallback), the owning engineer must (1) use an explicit, module-directory-anchored `load_dotenv()` path, never the bare cwd-dependent default — this repo has more than one `.env` file at different directory levels and the default resolves to whichever one `find_dotenv()` hits first walking up from cwd, not necessarily the intended one; and (2) confirm the exact env var NAME the code reads matches what's actually in the target `.env`, via `dotenv_values(path).keys()` (names only — never values, never the file's raw contents). `reviewer` must independently re-run that same key-name check as part of gating any change that adds a required credential; checking key existence with `os.getenv()` alone is not sufficient, since it can't distinguish "unset" from "set under a different name" and both must be ruled out. This check is compatible with "never read or display `.env`" below since no secret value is ever printed or read. **Note the split ownership here:** `config.py` (where env vars are actually read) is `backend-engineer`'s file, but the *decision* that a new key is needed is usually `ai-engineer`'s (e.g. adding an LLM provider) — `ai-engineer` states the exact var name and requirement in their report, `backend-engineer` performs both checks above before wiring it into `config.py`.
+- Bucket 2 (**simplification**) findings: apply if cheap, otherwise report to the user as optional. Check `rules/invariants.md` before recommending removal of anything — several things in this repo look like dead code and are load-bearing for a documented reason.
+- When a unit of work makes a previously-optional `.env` value required, follow `rules/env-vars.md` exactly — both the engineer making the change and `reviewer` (independently) run the key-name check.
+
+## Escalation tooling (dispatcher-level, not delegated to `reviewer`)
+
+`/security-review` and `/code-review ultra` are slash commands — they run in the main session
+only and are never available to a subagent, so `reviewer` cannot invoke them itself. For a
+high-risk or ambiguous unit, the **dispatcher** (you, in the main session) may run one of these
+as an additional pass alongside the normal `tester` → `reviewer` gate, not instead of it. Neither
+has CalAI calibration (see `rules/invariants.md` for what a generic pass will misflag as
+removable) — treat their output the way you'd treat any second opinion: a lens, not a verdict.
 
 ## Escalation rules (stop and ask the user)
 
@@ -73,9 +86,9 @@ When an agent reports back, extract and forward only what the next stage needs; 
 
 ## Cross-cutting rules (all agents already know these — dispatcher enforces)
 
-- Never read or display `.env`.
-- Backend: tools in `calai_backend/tools/` are plain functions (`ai-engineer`); `@tool` wrappers live in `api/routes.py` (`backend-engineer`'s file — `ai-engineer` hands over the wrapper code rather than editing it directly). As of ADR-006, the chat LLM provider is NVIDIA NIM (`ChatNVIDIA`), not Ollama — `config.py`'s `LLM_MODELS` is a retry+fallback chain (currently 2 models; `ai-engineer` decides the list and verifies any candidate model ID against a real call before it's added, since the NIM catalog's own `deprecated` flag has been found unreliable — see `providers/llm.py`'s comment; `backend-engineer` owns the actual edit to `config.py`). `NVIDIA_API_KEY` is required, no local-model fallback. `MAX_STEPS = 8` applies to the legacy ReAct loop only (`USE_ORCHESTRATOR=false`). Every HTTP error path must return the same `detail` envelope shape — `backend-engineer` normalizes hand-written `HTTPException` errors against FastAPI's own Pydantic-validation error shape rather than adding a third shape. Any endpoint reachable from a browser (i.e. `calai_frontend` web builds) needs `CORSMiddleware` scoped to the actual calling origin — `backend-engineer` verifies this is in place, never assumes it.
-- Frontend: `dart analyze lib/<file>` (never `flutter analyze`), `.withValues(alpha:)`, `AppColors.*` only, spec in `skills/flutter-dev/skill.md` is the single source of truth.
+- Never read or display `.env` (see `rules/env-vars.md`).
+- Backend hard facts (`@tool` location, LLM provider/model chain, `MAX_STEPS`, error envelope, CORS) — see `rules/backend-facts.md`. Ownership of the files these facts live in — see `rules/ownership.md`.
+- Frontend hard facts (`dart analyze` not `flutter analyze`, `.withValues(alpha:)`, `AppColors.*` only, field names) — see `rules/frontend-facts.md`. Spec in `skills/flutter-dev/SKILL.md` is the single source of truth for design tokens and layout.
 - At session end, run the `save-session-memory` skill.
 - **Every subagent completion is recorded automatically.** A `SubagentStop` hook
   (`.claude/scripts/agent_memory.sh`) appends each agent's final report, timestamp, agent type

@@ -75,30 +75,25 @@ calai_backend/
 │   ├── agent_service.py      # run_agent() — Orchestrator (default) + legacy ReAct loop
 │   ├── calc_pipeline.py      # run_calc_pipeline() — deterministic BMR→TDEE→goal, no LLM
 │   └── meal_parse_agent.py   # parse_meal() — isolated, eval-gated meal-parsing call
-├── tools/                    # Plain-Python functions (NO @tool decorator — wrappers live in api/routes.py)
+├── tools/                    # Plain-Python functions + the @tool wrappers around them
 │   ├── bmr.py
 │   ├── tdee.py
 │   ├── calorie_goal.py
-│   └── meal_parser.py        # thin wrapper around services/meal_parse_agent.py
+│   ├── meal_parser.py        # thin wrapper around services/meal_parse_agent.py
+│   └── registry.py           # the ONLY @tool decorators; get_tools()/get_dict()
 └── tests/                    # pytest — plain functions, no LLM calls, exact input→output
 ```
 
 **Adding a new endpoint** (⚠️ this spans two agents — see the ownership seam below):
 1. If it needs an LLM call, get the client via `providers/llm.py`'s `get_llm()`/`get_json_llm()` — never construct a `ChatNVIDIA` instance directly elsewhere, that's how the retry+fallback chain gets bypassed. *(`ai-engineer`)*
 2. Add/extend Pydantic models in `schemas.py`. *(`backend-engineer`)*
-3. Wire the route in `api/routes.py`. `@tool` wrappers (if the route needs to be agent-callable) live here, not in `tools/`. *(`backend-engineer`; `ai-engineer` supplies the wrapper code verbatim)*
+3. Wire the route in `api/routes.py`. *(`backend-engineer`)* If the capability must also be agent-callable, add its `@tool` wrapper to `calai_backend/tools/registry.py` — *(`ai-engineer`'s own file, no handoff)*.
 4. If the new logic is nondeterministic (calls an LLM), it needs eval coverage, not just a pytest unit test — see `evals/README.md` and `archdocs/ADR-004-eval-harness.md`. If it's pure computation, a `calai_backend/tests/` pytest case with exact input→output is enough.
 5. If a browser will call it, `CORSMiddleware` must cover the origin, and the error envelope must match every other route's. *(`backend-engineer`)*
 
-**Ownership seam inside `calai_backend/`:**
-
-| Files | Owner | Concerns |
-|---|---|---|
-| `main.py`, `api/routes.py`, `config.py`, `schemas.py` | `backend-engineer` | HTTP surface: routing, request/response shapes, CORS, status codes, error envelope, boundary validation, env-var wiring |
-| `services/`, `providers/`, `tools/`, `prompts/`, `calai_agent.py` | `ai-engineer` | LLM/agent logic: orchestration, prompts, model provider, tool functions |
-
-The seam is `routes.py` calling into `services/`. Neither agent edits the other's files — the
-one who needs a change states it verbatim in their report and hands it over.
+**Ownership seam inside `calai_backend/`:** see `rules/ownership.md` for the full table. The
+seam is `routes.py` calling into `services/`. Neither agent edits the other's files — the one
+who needs a change states it verbatim in their report and hands it over.
 
 **Running the backend:**
 ```bash
@@ -112,7 +107,7 @@ uvicorn calai_backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `401 Unauthorized` | Wrong/missing `NVIDIA_API_KEY`, or `.env` loaded from the wrong path | Check `dotenv_values('calai_backend/.env').keys()` for the exact var name (names only, never print values) — a stale `.env` elsewhere in the repo can shadow the real one if `load_dotenv()` isn't anchored to `calai_backend/`'s own directory |
+| `401 Unauthorized` | Wrong/missing `NVIDIA_API_KEY`, or `.env` loaded from the wrong path | Follow `rules/env-vars.md` — check `dotenv_values('calai_backend/.env').keys()` for the exact var name (names only, never print values); a stale `.env` elsewhere in the repo can shadow the real one if `load_dotenv()` isn't anchored to `calai_backend/`'s own directory |
 | `410 Gone` on a specific model | NVIDIA retired that model | Don't add/keep it in `LLM_MODELS` — verify replacements with `python evals/run_eval.py --model <id>` before relying on the catalog's `deprecated` flag |
 | `503` / rate-limited | NIM's free/eval tier request limit | This is what `LLM_MODELS`'s fallback chain exists for — confirm the chain actually has more than one *live* model, not just more than one entry |
 | Agent loops to MAX_STEPS | LLM not following tool order (legacy ReAct path only) | Strengthen the system prompt, add a few-shot example. The default Orchestrator path (`USE_ORCHESTRATOR=true`) has no iteration loop to get stuck in |

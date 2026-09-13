@@ -88,15 +88,15 @@ Numbering is stable — `07-action-plan.md` refers to these IDs.
 ### G8 🔴 Contract mismatches in skills that would 422 in production
 | Where | Says | Reality (from backend agent's report / routes) |
 |---|---|---|
-| `skills/flutter-dev/skill.md` API facts | `POST /api/parse-meal` body `{"text": …}` | field is `meal_text` (+ optional `meal_type`) |
-| `skills/flutter-test/skill.md` Step 4 curl | `"activity_level":"moderate"`, `"rate_kg_per_week":0` | enum is `moderately_active`; field is `goal_rate_kg_per_week` (must be `> 0`) |
-| `skills/flutter-test/skill.md` Step 4 curl | `-d '{"text":"2 eggs and toast"}'` | `meal_text` |
-| `skills/flutter-dev/skill.md` | Riverpod `^2.5.1`, `StateNotifierProvider` | `pubspec.yaml` is `^3.4.3` — Riverpod 3 uses `Notifier`/`AsyncNotifier` |
+| `skills/flutter-dev/SKILL.md` API facts | `POST /api/parse-meal` body `{"text": …}` | field is `meal_text` (+ optional `meal_type`) |
+| `skills/flutter-test/SKILL.md` Step 4 curl | `"activity_level":"moderate"`, `"rate_kg_per_week":0` | enum is `moderately_active`; field is `goal_rate_kg_per_week` (must be `> 0`) |
+| `skills/flutter-test/SKILL.md` Step 4 curl | `-d '{"text":"2 eggs and toast"}'` | `meal_text` |
+| `skills/flutter-dev/SKILL.md` | Riverpod `^2.5.1`, `StateNotifierProvider` | `pubspec.yaml` is `^3.4.3` — Riverpod 3 uses `Notifier`/`AsyncNotifier` |
 | `skills/flutter-dev`, `flutter-test`, `flutter-review` | `flutter analyze` | crashes here; rule is `dart analyze lib/<file>` |
 - **Why:** skills are what the *implementing* model reads. A wrong field name in a skill is a
   guaranteed bug delivered confidently. This is the #1 way agent systems ship broken code.
 - **Fix:** (a) correct the five items now (`08-agent-and-skill-fixes.md`); (b) stop
-  hand-writing API facts — generate the "API contract" section of `flutter-dev/skill.md`
+  hand-writing API facts — generate the "API contract" section of `flutter-dev/SKILL.md`
   from the backend's OpenAPI (`/openapi.json`) via a tiny script, and make `reviewer` diff it;
   (c) add a **docs-sync check** to reviewer's DoD: "for every changed Pydantic model or route,
   grep skills/ and archdocs/ for the old field name".
@@ -109,7 +109,7 @@ Numbering is stable — `07-action-plan.md` refers to these IDs.
   range, loading state, `meal_type` UI and multi-item rendering as **undecided**.
 - **Why:** tests and reviews written against undecided behavior either lock in an accident
   or fail forever. Decide first (ui-engineer), then sync all three skills from one source.
-- **Fix:** make `skills/flutter-dev/skill.md` the *only* place behavior facts live; have
+- **Fix:** make `skills/flutter-dev/SKILL.md` the *only* place behavior facts live; have
   `flutter-test` and `flutter-review` reference sections by heading instead of restating them.
 
 ### G10 🟡 Convention duplication across agents/skills/CLAUDE.md

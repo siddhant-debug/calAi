@@ -10,7 +10,7 @@ critique lands on an accurate picture — several things here are *better* than 
 | `architecture-designer` | Requirement → ADR in `archdocs/` | Read/Write/Edit/Grep/Glob | ADR path + number + per-engineer handoff brief |
 | `backend-engineer` (new, 2026-09-13) | HTTP surface: `main.py`, `api/routes.py`, `config.py`, `schemas.py` | +Bash | files changed, exact contract before/after, consumer notes |
 | `ai-engineer` | LLM/agent internals: `services/`, `providers/`, `tools/`, `prompts/`, `calai_agent.py` | +Bash | files changed, contract consumed/exposed, verbatim code for backend-engineer's files |
-| `ui-engineer` | Design tokens/spec in `skills/flutter-dev/skill.md`, `archdocs/frontendidea.md` | no Bash | spec sections changed + which `.dart` files must change |
+| `ui-engineer` | Design tokens/spec in `skills/flutter-dev/SKILL.md`, `archdocs/frontendidea.md` | no Bash | spec sections changed + which `.dart` files must change |
 | `flutter-engineer` | `calai_frontend/lib/**/*.dart` | +Bash | files changed, analyzer status, deferred decisions |
 | `tester` | pytest, `evals/dataset/*.jsonl`, Flutter tests; never gates | +Bash | files added, behavior each covers, what's left uncovered |
 | `reviewer` | Read-only gate; runs tests/evals; 3-bucket report | Read/Bash/Grep/Glob | bugs / simplifications / looks-good |

@@ -5,13 +5,13 @@ description: Review calAI Flutter frontend code for correctness, simplicity, and
 
 # calAI Flutter Review Skill
 
-You are reviewing the calAI Flutter frontend. Read `skills/flutter-dev/skill.md` before
+You are reviewing the calAI Flutter frontend. Read `skills/flutter-dev/SKILL.md` before
 reviewing any file — **that** is the source of truth for intended behaviour and design, not
 what the code currently does.
 
 `archdocs/frontendidea.md` is background product intent and is **not final** — treat it as
-context, never as a spec to review against. Where the two differ, `flutter-dev/skill.md` wins;
-where `flutter-dev/skill.md` marks something "Decisions pending", there is no correct
+context, never as a spec to review against. Where the two differ, `flutter-dev/SKILL.md` wins;
+where `flutter-dev/SKILL.md` marks something "Decisions pending", there is no correct
 behaviour yet and implementing one is itself a finding.
 
 ## Step 1 — Read the file in full
@@ -34,16 +34,16 @@ Report all issues found, even if the user didn't ask about them.
       `HTTPException` gives `detail` as a *string*, FastAPI validation gives a *list of dicts*.
       A bare `detail as String` cast is a bug until the backend normalizes this
 - [ ] Storage keys match the spec exactly, if the client-side storage option is in force
-      (persistence is an open decision — see `flutter-dev/skill.md` "Decisions pending")
+      (persistence is an open decision — see `flutter-dev/SKILL.md` "Decisions pending")
 - [ ] Ring fill clamped to `[0.0, 1.0]` before painting
-- [ ] Colour thresholds match `flutter-dev/skill.md` "Day ring colour logic" — read them there,
+- [ ] Colour thresholds match `flutter-dev/SKILL.md` "Day ring colour logic" — read them there,
       don't trust this list if the two disagree
 - [ ] Ring range / week window matches the spec **once decision #3 is resolved** — flag as
       blocked, don't assume Mon–Fri
 - [ ] go_router redirect: no profile → onboarding, has profile → home, never back after finish
 - [ ] Swipe-to-delete updates provider state AND storage, and targets a **stable id** —
       keying by meal name collides on duplicates
-- [ ] Nothing implements an item listed under "Decisions pending" in `flutter-dev/skill.md`
+- [ ] Nothing implements an item listed under "Decisions pending" in `flutter-dev/SKILL.md`
 
 ### Simplicity
 - [ ] No unnecessary abstraction — three similar lines is fine

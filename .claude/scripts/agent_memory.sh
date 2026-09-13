@@ -59,7 +59,7 @@ yaml=$(printf '%s' "$last" | awk '/^[[:space:]]*```yaml/{f=1;next} /^[[:space:]]
 # Only CalAI's pipeline agents are required to emit a YAML report block; a missing block
 # from one of those is a real DoD miss worth flagging, from Explore/general-purpose it isn't.
 case "$agent" in
-  backend-engineer|ai-engineer|flutter-engineer|ui-engineer|tester) yaml_required=1 ;;
+  backend-engineer|ai-engineer|flutter-engineer|ui-engineer|tester|reviewer|architecture-designer) yaml_required=1 ;;
   *) yaml_required=0 ;;
 esac
 

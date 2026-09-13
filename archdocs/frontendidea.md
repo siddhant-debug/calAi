@@ -7,7 +7,7 @@ do not implement against it.
 Current product direction: **`plans/v1-product-brief.md`** — calAI as a quiet, per-day food
 diary. Read it first.
 
-Current UI/UX spec: **`skills/flutter-dev/skill.md`**, "Design system" section — Onboarding
+Current UI/UX spec: **`skills/flutter-dev/SKILL.md`**, "Design system" section — Onboarding
 screen (conversational), Today screen (diary session), Status strip, Entry feed & Entry card,
 History sheet. This is the single source of truth for tokens, layout, and interaction; do not
 fork or duplicate it here.

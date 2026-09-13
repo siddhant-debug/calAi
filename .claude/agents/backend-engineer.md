@@ -22,19 +22,11 @@ Before writing code, read:
 - The actual current contents of the files you're about to change — never
   assume state from a prior description or ADR text, read fresh
 
-Conventions to follow (do not deviate without a clear reason stated in your report):
-- **CORS**: if a task adds or changes anything a browser client calls, verify
-  `CORSMiddleware` is configured for the origins that will actually hit it —
-  don't assume it's there. `flutter run -d chrome` binds a **new random port
-  every run**, so scope by `allow_origin_regex` (e.g. `http://localhost:\d+`
-  for local dev), not a fixed port.
-- **One error envelope, always.** Every error path on every endpoint must
-  return the same `detail` shape. Today they don't: hand-written
-  `HTTPException(detail=str(...))` returns a string, but FastAPI's own
-  Pydantic validation errors return `{"detail": [...]}` (list of
-  `{loc, msg, type}` dicts) — same key, two incompatible shapes. When you
-  touch an endpoint, normalize this (a shared exception handler is the clean
-  fix) rather than adding a third shape.
+Conventions to follow (do not deviate without a clear reason stated in your report) — CORS and
+the error-envelope shape are detailed in `rules/backend-facts.md`, the env-var contract in
+`rules/env-vars.md`:
+- **CORS** and **one error envelope, always** — per `rules/backend-facts.md`. You verify and
+  normalize both; don't assume either is already correct.
 - **Validate at the boundary, nowhere else.** Pydantic models in `schemas.py`
   are the validation layer. Don't add defensive checks inside `services/`
   for shapes `schemas.py` already guarantees — that's `ai-engineer`'s
@@ -45,12 +37,9 @@ Conventions to follow (do not deviate without a clear reason stated in your repo
   upstream NIM outage, not a local config problem. When you touch
   `config.py`, prefer failing loud and specific over failing generic and late.
 - **Env var changes**: if your change makes a previously-optional `.env`
-  value required, (1) use an explicit, module-directory-anchored
-  `load_dotenv()` path, never the bare cwd-dependent default — this repo has
-  more than one `.env` at different directory levels; (2) confirm the exact
-  variable NAME your code reads matches what's actually in the target `.env`
-  via `dotenv_values(path).keys()` — names only, never values. Never read or
-  display `.env` contents.
+  value required, follow `rules/env-vars.md` exactly (module-anchored
+  `load_dotenv()` path, `dotenv_values(path).keys()` name check). Never read
+  or display `.env` contents.
 - **Contract changes are the highest-blast-radius edits you make.** A
   request/response shape change in `schemas.py` breaks whichever frontend
   code already calls it. State the before/after shape explicitly in your
@@ -65,13 +54,11 @@ frontend side or `ai-engineer` needs to know to consume it correctly.
 ## Definition of Done (tick every line before you report)
 
 - [ ] `ruff check <each changed file>` clean (or the project's configured linter)
-- [ ] Every error path on a touched route returns the **same** `detail` envelope shape — check
-      your hand-written `HTTPException(detail=str(...))` against FastAPI's own Pydantic
-      validation errors (`{"detail": [...]}`) and normalize rather than adding a third shape
+- [ ] Every error path on a touched route returns the **same** `detail` envelope shape (`rules/backend-facts.md`) — normalize rather than adding a third shape
 - [ ] If a touched route is reachable from a browser build, `CORSMiddleware` covers its origin
 - [ ] Request/response contract stated as before → after, with `breaking` answered honestly
-- [ ] No new required env var without the module-anchored `load_dotenv()` path **and** the
-      `dotenv_values(path).keys()` name check (names only — never values)
+- [ ] No new required env var without the full `rules/env-vars.md` check (module-anchored
+      `load_dotenv()` path **and** the `dotenv_values(path).keys()` name check)
 - [ ] Any edit needed in `ai-engineer`'s files listed under `handoffs` with verbatim content
 - [ ] Every doc that states a fact you changed (a field name, an enum value, a route) is either
       updated or listed in `handoffs` — check `skills/`, `archdocs/`, `CLAUDE.md`

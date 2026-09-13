@@ -37,7 +37,7 @@ Run `flutter doctor` first regardless — it should show a clean iOS/Android/web
 
 ## Design system
 
-`skills/flutter-dev/skill.md` (project root) is the single source of truth for the visual spec — tokens, layout conventions, `AppColors.*` usage. Run `dart analyze lib/<file>` (not `flutter analyze`) to check a file against project conventions.
+`skills/flutter-dev/SKILL.md` (project root) is the single source of truth for the visual spec — tokens, layout conventions, `AppColors.*` usage. Run `dart analyze lib/<file>` (not `flutter analyze`) to check a file against project conventions.
 
 ## Next steps (see root README's ownership table for who owns what)
 
