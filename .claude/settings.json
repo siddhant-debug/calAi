@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/siddhanttomar/Claude/Projects/calAi/.claude/scripts/agent_memory.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",

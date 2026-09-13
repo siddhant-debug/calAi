@@ -47,16 +47,45 @@ Tell the user to replace `<LOCAL_IP>` with their Mac's LAN IP (required for real
 
 **API calls:**
 - `POST /api/calculate` → body matches `UserProfile.toJson()`, returns `bmr_kcal`, `tdee_kcal`, `calorie_goal_kcal`
-- `POST /api/parse-meal` → `{"text": "<meal description>"}`, returns `items[]`, `total_kcal`
+- `POST /api/parse-meal` → `{"meal_text": "<meal description>", "meal_type": "breakfast|lunch|dinner|snack"}`
+  (`meal_type` optional, defaults to `snack`). Returns `items[]` where each item is
+  `{name, quantity, unit, calories_kcal, protein_g, carbs_g, fat_g, confidence}` plus
+  `total_kcal`, `meal_type`, `model_latency_ms`.
+  **The field is `meal_text`, not `text`** — sending `text` returns HTTP 422.
 
-**State management:** Riverpod (`flutter_riverpod ^2.5.1`) — use `StateNotifierProvider` for user profile + meals
+**State management:** Riverpod 3 (`flutter_riverpod ^3.4.3`) — use `Notifier` / `AsyncNotifier`
+(**not** `StateNotifierProvider`, which is the Riverpod 2 API). Expose `AsyncValue` so screens
+can render loading / error / data states — required because `/api/parse-meal` takes 9–40s.
 
-**Storage:** SharedPreferences keys:
+**Storage:** SharedPreferences keys (⚠️ *client-side vs server-side persistence is an OPEN
+decision — see "Decisions pending" below. These keys are the client-side option's shape.*):
 - `"user_profile"` (JSON)
 - `"calorie_goal"` (double)
 - `"meals_YYYY-MM-DD"` (JSON list)
 
 **Navigation:** go_router — `/` redirects to `/onboarding` (no profile) or `/home` (has profile)
+
+**Profile is mandatory and captured once at setup.** It is never extracted from free text and
+never partially submitted, so no screen needs to handle a half-filled profile.
+
+---
+
+## Decisions pending — USER-DECIDES, do not implement past these
+
+`archdocs/frontendidea.md` is **not final**. The following are unresolved; if a task requires
+one of them, stop and escalate rather than picking an answer. (Tracked in `scratch/blockers.md`.)
+
+| # | Open question | Why it blocks |
+|---|---|---|
+| 1 | **Multi-item rendering** — one row per submission (original text + `total_kcal`), one row per parsed item, or expandable? | Decides `MealEntry`'s shape and what swipe-to-delete removes |
+| 2 | **Nutrition detail shown** — kcal only / + `confidence` marker / + full macros? | Backend returns macros + confidence; the mockup shows only kcal. Note calorie MAPE is ~37% while item precision/recall are 91%/99% — quantities are the weak spot, so `confidence` is real signal |
+| 3 | **Day-ring range** — fixed Mon–Fri (5), rolling 7 ending today, or fixed Mon–Sun? | Current mockup is Mon–Fri with no weekend behaviour and no defined "today" on a weekend |
+| 4 | **`meal_type` affordance** — infer from clock, chip row, or always send default? | No picker exists today |
+| 5 | **In-flight state for 9–40s calls** | Nothing is designed; the input bar has only enabled/disabled |
+| 6 | **Persistence** — client-side SharedPreferences or server-side (`save_meal`/`get_daily_summary` + identity)? | Decides whether the keys above are the storage model at all |
+
+**`/api/agent` is not part of the frontend contract.** It returns prose (`response: str`), which
+no current screen can render. Do not call it without an explicit design decision.
 
 **Day ring colour logic:**
 ```
@@ -276,10 +305,14 @@ Centred vertically in the meal list area.
 - No error handling for impossible cases — only validate at API boundary (null checks on
   JSON responses)
 - Keep widgets small; extract `CustomPainter` to `day_ring.dart` only
-- Run `flutter analyze` after each file; fix all errors before moving on
-- After implementing a screen, run on simulator and confirm the golden path works
+- Run `dart analyze lib/<file>` after each file; fix all errors before moving on.
+  **Never `flutter analyze`** — it crashes with a missing snapshot in this install.
+- After implementing a screen, run it and confirm the golden path works. iOS on-device
+  debugging is currently broken (Xcode debug-session handshake); verify in Chrome
+  (`flutter run -d chrome`) with DevTools' device toolbar at phone width.
 - Never use `Colors.white`, `Colors.black`, `Colors.blue`, or any `Colors.*` constant —
   always use `AppColors.*`
+- Colour alpha: always `.withValues(alpha: x)` — `.withOpacity()` is deprecated
 - Never use default `ThemeData` button styles — always compose manually
 - `google_fonts` must be the only font source; no asset fonts
 
@@ -288,7 +321,7 @@ Centred vertically in the meal list area.
 ## After each file
 
 ```bash
-cd calai_frontend && flutter analyze lib/<file>
+cd calai_frontend && dart analyze lib/<file>
 ```
 
 Fix any errors before proceeding.

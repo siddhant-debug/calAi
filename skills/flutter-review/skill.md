@@ -5,28 +5,45 @@ description: Review calAI Flutter frontend code for correctness, simplicity, and
 
 # calAI Flutter Review Skill
 
-You are reviewing the calAI Flutter iOS frontend. Read `archdocs/frontendidea.md` before reviewing any file — it is the source of truth for intended behaviour, not what the code currently does.
+You are reviewing the calAI Flutter frontend. Read `skills/flutter-dev/skill.md` before
+reviewing any file — **that** is the source of truth for intended behaviour and design, not
+what the code currently does.
+
+`archdocs/frontendidea.md` is background product intent and is **not final** — treat it as
+context, never as a spec to review against. Where the two differ, `flutter-dev/skill.md` wins;
+where `flutter-dev/skill.md` marks something "Decisions pending", there is no correct
+behaviour yet and implementing one is itself a finding.
 
 ## Step 1 — Read the file in full
 Use the Read tool on the target file. Never review from memory or partial context.
 
 ## Step 2 — Run static analysis
 ```bash
-cd calai_frontend && flutter analyze lib/<file>
+cd calai_frontend && dart analyze lib/<file>
 ```
+(**Never `flutter analyze`** — it crashes with a missing snapshot in this install.)
 Report all issues found, even if the user didn't ask about them.
 
 ## Step 3 — Review checklist
 
 ### Correctness
-- [ ] API request body matches backend expectations (`/api/calculate`, `/api/parse-meal`)
-- [ ] SharedPreferences keys match exactly: `"user_profile"`, `"calorie_goal"`, `"meals_YYYY-MM-DD"`
-- [ ] Weekly totals load Mon–Fri of current ISO week (not last 7 days)
+- [ ] `POST /api/parse-meal` body uses **`meal_text`** (not `text`), optional `meal_type`
+- [ ] `POST /api/calculate` uses `activity_level` from the 5-value enum (`moderately_active`,
+      not `moderate`) and `goal_rate_kg_per_week` (not `rate_kg_per_week`), value `> 0`
+- [ ] Error handling copes with the backend's error envelope in **both** shapes — hand-written
+      `HTTPException` gives `detail` as a *string*, FastAPI validation gives a *list of dicts*.
+      A bare `detail as String` cast is a bug until the backend normalizes this
+- [ ] Storage keys match the spec exactly, if the client-side storage option is in force
+      (persistence is an open decision — see `flutter-dev/skill.md` "Decisions pending")
 - [ ] Ring fill clamped to `[0.0, 1.0]` before painting
-- [ ] Colour thresholds: grey <0.80, green 0.80–1.00, amber 1.00–1.15, red >1.15
-- [ ] go_router redirect logic: no profile → `/onboarding`, has profile → `/home` (never back to onboarding after finish)
-- [ ] Onboarding PageView is forward-only (no back navigation)
-- [ ] Swipe-to-delete updates provider state AND SharedPreferences
+- [ ] Colour thresholds match `flutter-dev/skill.md` "Day ring colour logic" — read them there,
+      don't trust this list if the two disagree
+- [ ] Ring range / week window matches the spec **once decision #3 is resolved** — flag as
+      blocked, don't assume Mon–Fri
+- [ ] go_router redirect: no profile → onboarding, has profile → home, never back after finish
+- [ ] Swipe-to-delete updates provider state AND storage, and targets a **stable id** —
+      keying by meal name collides on duplicates
+- [ ] Nothing implements an item listed under "Decisions pending" in `flutter-dev/skill.md`
 
 ### Simplicity
 - [ ] No unnecessary abstraction — three similar lines is fine
@@ -38,6 +55,10 @@ Report all issues found, even if the user didn't ask about them.
 - [ ] `const` constructors used where possible
 - [ ] `AnimationController` disposed in `dispose()`
 - [ ] No `setState` inside Riverpod-managed screens (use `ref.read` / `ref.watch`)
+- [ ] Riverpod **3** API: `Notifier`/`AsyncNotifier`, not `StateNotifierProvider`; loading and
+      error surfaced via `AsyncValue` (mandatory — calls take 9–40s)
+- [ ] `.withValues(alpha: x)` everywhere; no `.withOpacity()`
+- [ ] No `Colors.*` constants — `AppColors.*` only
 - [ ] `CustomPainter` `shouldRepaint` returns `true` only when the painted value changes
 - [ ] `ListView` items have a `key` (for swipe-to-delete stability)
 
