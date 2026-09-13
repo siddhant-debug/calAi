@@ -13,6 +13,9 @@ __pycache__/
 # Backend logs
 calai_backend/logs/
 
+# Hook internals — raw SubagentStop payloads, kept only for schema debugging
+.claude/scripts/.agent_memory_payload.log
+
 # Scratch / internal working docs (kept locally, not published)
 learning.md
 error.txt
