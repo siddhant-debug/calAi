@@ -22,3 +22,42 @@ Hard conventions (from prior sessions — do not relitigate):
 Implementation order when working through stubs (never skip ahead): models → storage_service → api_service → providers → widgets → screens → main.dart.
 
 When you finish a file, run `dart analyze lib/<file>` and fix all errors before moving on. When you finish a unit of work, report which files changed, analyzer status, and anything you deliberately deferred (e.g. a design decision you couldn't make because it wasn't in the spec).
+
+---
+
+## Definition of Done (tick every line before you report)
+
+- [ ] `dart analyze lib/<file>` clean for every file you touched (never `flutter analyze`)
+- [ ] Riverpod 3 API (`Notifier`/`AsyncNotifier`), loading + error exposed via `AsyncValue` —
+      mandatory, since `/api/parse-meal` takes 9–40s
+- [ ] `AppColors.*` only; `.withValues(alpha:)` only
+- [ ] Request bodies match the contract in `skills/flutter-dev/skill.md` field-for-field
+      (`meal_text` not `text`; `goal_rate_kg_per_week`; the 5-value `activity_level` enum)
+- [ ] Error handling tolerates the backend's `detail` being **either** a string or a list
+- [ ] Nothing implemented that `skills/flutter-dev/skill.md` lists under "Decisions pending" —
+      if the task requires one, stop and report it as an open question
+- [ ] Architecture layering respected: models are plain Dart (no Flutter imports),
+      `api_service` is HTTP-only, `storage_service` is storage-only, providers depend on
+      services, screens only call providers
+
+## Report format (mandatory)
+
+End your report with a fenced `yaml` block using exactly these keys.
+
+```yaml
+unit_id: <from the brief/plan>
+stage: flutter-engineer
+files_changed: []
+analyzer: ""          # e.g. "dart analyze lib: 0 issues"
+contract:
+  consumed: ""        # which endpoints/fields this code now calls
+  breaking: false
+handoffs: []
+tests:
+  added: []
+  run_cmd: ""
+  result: ""
+open_questions: []    # non-empty ⇒ the pipeline STOPS here
+deferred: []          # include any design decision you could not make
+risk: low
+```
