@@ -1,0 +1,490 @@
+<!--
+  CalAI — v1 diary UI preview (2026-09-13)
+
+  Source of the interactive mockup published at:
+    https://claude.ai/code/artifact/658e96ac-9cfb-4356-b8c0-3f9e05c6ccea
+
+  What it shows: six screens of the diary-first direction settled in plans/v1-product-brief.md —
+  conversational onboarding, the notebook page (empty and written on), the entry details view,
+  and the history sheet. Built against the locked dark tokens in skills/flutter-dev/skill.md.
+
+  NOTE: this is a design reference, not the spec. Where this file and
+  skills/flutter-dev/skill.md disagree, the skill file is the contract flutter-engineer builds
+  from — and as of this commit the skill file still describes the earlier card-based design.
+  See the memory note / brief for what still needs reconciling.
+-->
+<title>CalAI Diary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* app tokens — locked, from skills/flutter-dev/skill.md */
+    --bg-deep:#0D0D0F; --bg-card:#1A1A1F; --bg-surface:#222228;
+    --ink-primary:#F0F0F4; --ink-secondary:#8A8A96; --ink-muted:#45454F;
+    --signal-green:#3EE88B; --signal-amber:#FFB830; --signal-red:#FF4757; --signal-grey:#3A3A44;
+    --accent-ice:#6FECFF;
+    /* stage chrome — the studio backdrop the phone sits on, deliberately a shade cooler/darker
+       than the app's own bg-deep so the device reads as an object, not a continuation */
+    --stage-bg:#08090B; --stage-line:rgba(240,240,244,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--stage-bg); color:var(--ink-primary);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    padding:56px 32px 72px;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  /* ---------- type utilities, straight from the token spec ---------- */
+  .num-display{ font-family:'DM Mono',monospace; font-size:52px; font-weight:600; letter-spacing:-1.5px; color:var(--ink-primary); }
+  .num-section{ font-family:'DM Mono',monospace; font-size:22px; font-weight:500; letter-spacing:-0.5px; color:var(--ink-primary); }
+  .num-small{ font-family:'DM Mono',monospace; font-size:13px; font-weight:400; color:var(--ink-secondary); }
+  .label-lg{ font-family:'Inter',sans-serif; font-size:15px; font-weight:600; letter-spacing:0.1px; color:var(--ink-primary); }
+  .label-sm{ font-family:'Inter',sans-serif; font-size:12px; font-weight:500; letter-spacing:0.4px; color:var(--ink-secondary); text-transform:uppercase; }
+  .body-text{ font-family:'Inter',sans-serif; font-size:15px; font-weight:400; color:var(--ink-secondary); line-height:1.55; }
+
+  /* ---------- page chrome ---------- */
+  .masthead{ max-width:1180px; margin:0 auto 40px; display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; border-bottom:1px solid var(--stage-line); padding-bottom:28px; }
+  .masthead h1{ margin:0 0 8px; font-family:'Inter',sans-serif; font-weight:700; font-size:28px; letter-spacing:-0.3px; color:var(--ink-primary); text-wrap:balance; }
+  .masthead p{ margin:0; max-width:52ch; font-family:'Inter',sans-serif; font-size:15px; color:var(--ink-secondary); line-height:1.55; }
+  .masthead .tag{ font-family:'DM Mono',monospace; font-size:12px; color:var(--accent-ice); letter-spacing:0.4px; text-transform:uppercase; }
+
+  .stage{ max-width:1180px; margin:0 auto; display:grid; grid-template-columns:auto 1fr; gap:56px; align-items:start; }
+  @media (max-width:860px){ .stage{ grid-template-columns:1fr; justify-items:center; } }
+
+  .device-col{ display:flex; flex-direction:column; align-items:center; gap:22px; }
+
+  .switcher{ display:flex; flex-wrap:wrap; justify-content:center; max-width:360px; gap:6px; background:#111114; border:1px solid var(--stage-line); border-radius:12px; padding:5px; }
+  .switcher button{
+    all:unset; cursor:pointer; padding:9px 12px; border-radius:8px;
+    font-family:'DM Mono',monospace; font-size:12px; color:var(--ink-secondary);
+    display:flex; align-items:center; gap:7px; transition:background 120ms ease, color 120ms ease;
+  }
+  .switcher button .n{ opacity:0.55; }
+  .switcher button:hover{ color:var(--ink-primary); }
+  .switcher button:focus-visible{ outline:1.5px solid var(--accent-ice); outline-offset:2px; }
+  .switcher button.active{ background:var(--bg-surface); color:var(--ink-primary); }
+  .switcher button.active .n{ opacity:1; color:var(--accent-ice); }
+
+  /* ---------- the device ---------- */
+  .phone-wrap{ position:relative; }
+  .phone-wrap::before{
+    content:""; position:absolute; inset:-60px; z-index:0;
+    background:radial-gradient(circle at 50% 38%, rgba(111,236,255,0.10), transparent 65%);
+    pointer-events:none;
+  }
+  .phone{
+    position:relative; z-index:1; width:336px; height:704px;
+    background:linear-gradient(155deg,#1d1e22,#0f1012);
+    border-radius:54px; padding:12px;
+    box-shadow:0 40px 80px -30px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  .screen{
+    position:relative; width:100%; height:100%; overflow:hidden;
+    background:var(--bg-deep); border-radius:42px;
+    display:flex; flex-direction:column;
+  }
+  .pane{ height:100%; display:flex; flex-direction:column; }
+  .island{ position:absolute; top:11px; left:50%; transform:translateX(-50%); width:90px; height:26px; background:#000; border-radius:16px; z-index:6; }
+  .status-row{ display:flex; justify-content:space-between; align-items:center; padding:16px 26px 0; font-family:'DM Mono',monospace; font-size:13px; color:var(--ink-primary); flex:none; }
+  .status-row .indicators{ display:flex; gap:5px; align-items:center; color:var(--ink-secondary); font-size:11px; }
+  .home-indicator{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:120px; height:4px; border-radius:2px; background:var(--ink-primary); opacity:0.28; z-index:6; }
+
+  .screen-body{ flex:1; min-height:0; display:flex; flex-direction:column; padding:18px 20px 0; }
+  .scroll{ flex:1; min-height:0; overflow-y:auto; padding-bottom:14px; scrollbar-width:none; }
+  .scroll::-webkit-scrollbar{ display:none; }
+
+  [hidden]{ display:none !important; }
+
+  /* ---------- header row (Today) ---------- */
+  .day-header{ all:unset; cursor:pointer; display:flex; align-items:center; gap:6px; margin-bottom:14px; }
+  .day-header:focus-visible{ outline:1.5px solid var(--accent-ice); outline-offset:3px; border-radius:4px; }
+  .day-header .chev{ color:var(--ink-secondary); font-size:10px; transition:transform 160ms ease; }
+  .day-header.open .chev{ transform:rotate(180deg); }
+
+  /* ---------- status strip ---------- */
+  .status-strip{ margin-bottom:16px; }
+  .status-strip .goal-line{ margin-top:2px; }
+  .track{ margin-top:8px; height:2px; border-radius:1px; background:var(--bg-surface); overflow:hidden; }
+  .fill{ height:100%; border-radius:1px; transition:width 300ms ease-in-out; }
+  .macro-line{ margin-top:10px; display:flex; gap:6px; align-items:baseline; }
+  .macro-line .dot{ color:var(--ink-muted); }
+
+  hr.div{ border:none; border-top:1px solid var(--ink-muted); margin:16px 0 0; flex:none; }
+
+  /* ---------- notebook paper — the page IS the input, and logged meals are lines written on it ---------- */
+  .paper{ flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; }
+  .paper::-webkit-scrollbar{ display:none; }
+  .paper-line{ height:36px; flex:none; border-bottom:1px solid var(--bg-surface); display:flex; align-items:center; }
+  .paper-line.active{ border-bottom-color:var(--ink-muted); transition:border-color 120ms ease; }
+  .paper-line.active:focus-within{ border-bottom-color:var(--accent-ice); }
+  .paper-line input{ all:unset; width:100%; font-family:'Inter',sans-serif; font-size:15px; color:var(--ink-primary); }
+  .paper-line input::placeholder{ color:var(--ink-muted); }
+
+  /* a written line: what you wrote, and the agent's number out in the margin */
+  .paper-line.written{ justify-content:space-between; gap:12px; cursor:pointer; transition:border-color 120ms ease; }
+  .paper-line.written:hover{ border-bottom-color:var(--ink-muted); }
+  .paper-line.written:focus-visible{ outline:1.5px solid var(--accent-ice); outline-offset:-1px; }
+  .line-text{ flex:1; font-family:'Inter',sans-serif; font-size:15px; color:var(--ink-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .line-right{ flex:none; display:flex; align-items:center; gap:7px; }
+  .flag{ width:6px; height:6px; border-radius:50%; background:var(--signal-amber); flex:none; }
+
+  /* ---------- entry details (reached by tapping a line — no input here) ---------- */
+  .back-btn{ all:unset; cursor:pointer; display:flex; align-items:center; gap:6px; flex:none; }
+  .back-btn:focus-visible{ outline:1.5px solid var(--accent-ice); outline-offset:3px; border-radius:4px; }
+  .detail-item{ padding:12px 0; border-bottom:1px solid var(--bg-surface); }
+  .detail-item .top{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+  .detail-item .name{ font-family:'Inter',sans-serif; font-size:15px; color:var(--ink-primary); display:flex; align-items:center; gap:7px; }
+  .detail-item .macros{ margin-top:5px; }
+  .danger{ all:unset; cursor:pointer; font-family:'Inter',sans-serif; font-size:13px; font-weight:500; color:var(--signal-red); padding:14px 0 0; }
+  .danger:focus-visible{ outline:1.5px solid var(--signal-red); outline-offset:3px; border-radius:4px; }
+
+  /* on the empty page the tally sits at the foot of the sheet, under the rule */
+  .status-strip.footer{ margin:14px 0 0; }
+
+  /* ---------- onboarding ---------- */
+  .onb-prompt{ padding-bottom:8px; }
+  .onb-prompt .headline{ text-wrap:balance; }
+  .onb-example{ margin-top:14px; }
+
+  .onb-thread{ flex:0 1 auto; min-height:0; overflow-y:auto; scrollbar-width:none; padding-top:6px; }
+  .onb-thread::-webkit-scrollbar{ display:none; }
+  .user-msg{ margin-bottom:14px; }
+  .agent-card{ background:var(--bg-card); border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.35); }
+  .agent-card .row{ display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; }
+  .agent-card .row .v{ font-family:'DM Mono',monospace; font-size:13px; color:var(--ink-secondary); }
+  .target-row{ display:flex; justify-content:space-between; align-items:baseline; padding-top:12px; }
+  .btn-primary{ all:unset; box-sizing:border-box; display:block; width:100%; text-align:center; margin-top:16px; height:52px; line-height:52px; background:var(--accent-ice); color:var(--bg-deep); border-radius:10px; font-family:'Inter',sans-serif; font-weight:600; font-size:15px; letter-spacing:0.1px; cursor:pointer; transition:transform 90ms ease; }
+  .btn-primary:active{ transform:scale(0.97); }
+  .btn-primary:focus-visible{ outline:2px solid var(--ink-primary); outline-offset:2px; }
+  .fine-print{ text-align:center; margin-top:12px; color:var(--ink-muted); }
+
+  /* ---------- history sheet ---------- */
+  .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,0.5); z-index:8; opacity:0; pointer-events:none; transition:opacity 220ms ease; }
+  .backdrop.show{ opacity:1; pointer-events:auto; }
+  .sheet{ position:absolute; left:0; right:0; bottom:0; height:80%; background:var(--bg-card); border-radius:20px 20px 0 0; z-index:9; padding:12px 20px 22px; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 260ms cubic-bezier(.2,.9,.25,1); box-shadow:0 -20px 50px rgba(0,0,0,0.5); }
+  .sheet.show{ transform:translateY(0); }
+  .handle{ width:36px; height:4px; border-radius:2px; background:var(--ink-muted); margin:0 auto 16px; flex:none; }
+  .hist-summary{ flex:none; }
+  .hist-summary .sub{ margin-top:4px; }
+  .hist-list{ flex:1; min-height:0; overflow-y:auto; margin-top:2px; scrollbar-width:none; }
+  .hist-list::-webkit-scrollbar{ display:none; }
+  .hist-row{ display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-top:1px solid var(--ink-muted); cursor:pointer; }
+  .hist-row:first-child{ border-top:none; }
+  .hist-date{ display:flex; align-items:baseline; gap:8px; }
+  .hist-date .dow{ color:var(--ink-muted); }
+  .hist-right{ display:flex; align-items:center; gap:8px; }
+  .zone-dot{ width:6px; height:6px; border-radius:50%; flex:none; }
+
+  /* ---------- side notes ---------- */
+  .notes{ max-width:340px; padding-top:8px; }
+  .notes .cap{ min-height:54px; margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid var(--stage-line); }
+  .notes .cap .idx{ color:var(--accent-ice); }
+  .principles{ display:flex; flex-direction:column; gap:18px; }
+  .principle{ display:grid; grid-template-columns:20px 1fr; gap:10px; }
+  .principle .mk{ width:6px; height:6px; border-radius:50%; margin-top:6px; }
+</style>
+
+<div class="masthead">
+  <div>
+    <div class="tag">calai · v1 product brief → ui-engineer spec</div>
+    <h1>The diary, not the dashboard</h1>
+    <p>Five screens from the new spec, in sequence: describing yourself once, logging without ceremony, and looking back without a leaderboard. Nothing here animates unless you'd actually see it move.</p>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="device-col">
+    <div class="switcher" role="tablist" aria-label="Screen states">
+      <button class="active" data-screen="onb-start"><span class="n">01</span>Onboarding</button>
+      <button data-screen="onb-confirm"><span class="n">02</span>Confirm</button>
+      <button data-screen="today-empty"><span class="n">03</span>Empty page</button>
+      <button data-screen="today-logged"><span class="n">04</span>Written on</button>
+      <button data-screen="entry-details"><span class="n">05</span>Entry</button>
+      <button data-screen="history"><span class="n">06</span>History</button>
+    </div>
+
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+
+          <!-- ================= 01 ONBOARDING · START ================= -->
+          <div class="pane" id="pane-onb-start">
+            <div class="status-row"><span>9:41</span><span class="indicators">●●●&nbsp;&nbsp;5G&nbsp;&nbsp;▮</span></div>
+            <div class="screen-body">
+              <div style="height:64px; flex:none"></div>
+              <div class="onb-prompt">
+                <div class="label-lg headline">Tell me about yourself and your goal.</div>
+                <div class="body-text onb-example">"I'm 60kg, want to gain 8kg over 4 months, get stronger, eat clean, not force-fed."</div>
+              </div>
+              <div class="paper-line active" style="margin-top:22px; flex:none">
+                <input type="text" placeholder="Tell me about yourself…" aria-label="Onboarding message" />
+              </div>
+              <div style="flex:1"></div>
+            </div>
+            <div class="home-indicator"></div>
+          </div>
+
+          <!-- ================= 02 ONBOARDING · CONFIRM ================= -->
+          <div class="pane" id="pane-onb-confirm" hidden>
+            <div class="status-row"><span>9:42</span><span class="indicators">●●●&nbsp;&nbsp;5G&nbsp;&nbsp;▮</span></div>
+            <div class="screen-body">
+              <div class="onb-thread">
+                <div class="user-msg label-lg">I'm 60kg, want to gain 8kg over 4 months, get stronger, eat clean, not force-fed.</div>
+                <div class="agent-card">
+                  <div class="label-sm">Profile</div>
+                  <div class="agent-card row"><span class="body-text" style="font-size:13px">Weight</span><span class="v">60 kg</span></div>
+                  <div class="agent-card row"><span class="body-text" style="font-size:13px">Goal</span><span class="v">Gain 8kg / 4mo</span></div>
+                  <div class="agent-card row"><span class="body-text" style="font-size:13px">Activity</span><span class="v">Moderate</span></div>
+                  <div class="agent-card row"><span class="body-text" style="font-size:13px">Height</span><span class="v">172 cm</span></div>
+                  <hr class="div" style="margin-top:2px" />
+                  <div class="target-row"><span class="label-sm" style="margin:0">Daily target</span><span class="num-section tabular">2,340 kcal</span></div>
+                  <button class="btn-primary">Confirm</button>
+                </div>
+                <div class="body-text fine-print" style="font-size:13px">Or just tell me what's wrong.</div>
+              </div>
+              <div class="paper-line active" style="margin-top:18px; flex:none">
+                <input type="text" placeholder="Tell me about yourself…" aria-label="Onboarding message" />
+              </div>
+              <div style="flex:1"></div>
+            </div>
+            <div class="home-indicator"></div>
+          </div>
+
+          <!-- ================= 03 TODAY · EMPTY ================= -->
+          <div class="pane" id="pane-today-empty" hidden>
+            <div class="status-row"><span>9:41</span><span class="indicators">●●●&nbsp;&nbsp;5G&nbsp;&nbsp;▮</span></div>
+            <div class="screen-body" style="padding-bottom:22px">
+              <button class="day-header label-sm" style="margin:0 0 12px" tabindex="-1">Today · Sep 13 <span class="chev">▾</span></button>
+              <div class="paper">
+                <div class="paper-line active"><input type="text" placeholder="What did you eat?" aria-label="Log a meal" /></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+              </div>
+              <hr class="div" />
+              <div class="status-strip footer">
+                <div class="num-display tabular" style="color:var(--signal-grey)">0</div>
+                <div class="num-small tabular goal-line">of 2,340 kcal</div>
+                <div class="track"><div class="fill" style="width:0%; background:var(--signal-grey)"></div></div>
+                <div class="macro-line"><span class="label-sm" style="margin:0">P</span><span class="num-small tabular">0g</span><span class="dot num-small">·</span><span class="label-sm" style="margin:0">C</span><span class="num-small tabular">0g</span><span class="dot num-small">·</span><span class="label-sm" style="margin:0">F</span><span class="num-small tabular">0g</span></div>
+              </div>
+            </div>
+            <div class="home-indicator"></div>
+          </div>
+
+          <!-- ================= 04 TODAY · LOGGED ================= -->
+          <div class="pane" id="pane-today-logged" hidden>
+            <div class="status-row"><span>9:41</span><span class="indicators">●●●&nbsp;&nbsp;5G&nbsp;&nbsp;▮</span></div>
+            <div class="screen-body" style="padding-bottom:22px">
+              <button class="day-header label-sm" id="day-header-toggle" style="margin:0 0 12px">Today · Sep 13 <span class="chev">▾</span></button>
+              <div class="paper">
+                <div class="paper-line written" tabindex="0" data-detail>
+                  <span class="line-text">2 idlis with sambar</span>
+                  <span class="line-right"><span class="num-small tabular">320</span></span>
+                </div>
+                <div class="paper-line written" tabindex="0" data-detail>
+                  <span class="line-text">5 roti and a cup of dal</span>
+                  <span class="line-right"><span class="flag"></span><span class="num-small tabular">612</span></span>
+                </div>
+                <div class="paper-line written" tabindex="0" data-detail>
+                  <span class="line-text">Handful of almonds</span>
+                  <span class="line-right"><span class="num-small tabular">170</span></span>
+                </div>
+                <div class="paper-line written" tabindex="0" data-detail>
+                  <span class="line-text">Paneer butter masala with rice</span>
+                  <span class="line-right"><span class="num-small tabular">870</span></span>
+                </div>
+                <div class="paper-line active"><input type="text" placeholder="What did you eat?" aria-label="Log a meal" /></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+                <div class="paper-line"></div>
+              </div>
+              <hr class="div" />
+              <div class="status-strip footer">
+                <div class="num-display tabular" style="color:var(--signal-green)">1,972</div>
+                <div class="num-small tabular goal-line">of 2,340 kcal</div>
+                <div class="track"><div class="fill" style="width:84%; background:var(--signal-green)"></div></div>
+                <div class="macro-line"><span class="label-sm" style="margin:0">P</span><span class="num-small tabular">142g</span><span class="dot num-small">·</span><span class="label-sm" style="margin:0">C</span><span class="num-small tabular">210g</span><span class="dot num-small">·</span><span class="label-sm" style="margin:0">F</span><span class="num-small tabular">68g</span></div>
+              </div>
+            </div>
+            <div class="home-indicator"></div>
+
+            <div class="backdrop" id="backdrop-4"></div>
+            <div class="sheet" id="sheet-4">
+              <div class="handle"></div>
+              <div class="hist-summary">
+                <div class="label-sm">History</div>
+                <div class="num-section tabular" style="margin-top:10px">61.2 kg</div>
+                <div class="num-small tabular sub">vs 61.8 kg expected · week 3 of 16</div>
+              </div>
+              <hr class="div" style="margin-top:14px" />
+              <div class="hist-list" id="hist-list-4"></div>
+            </div>
+          </div>
+
+          <!-- ================= 05 ENTRY · DETAILS (tap a written line — no input here) ================= -->
+          <div class="pane" id="pane-entry-details" hidden>
+            <div class="status-row"><span>9:41</span><span class="indicators">●●●&nbsp;&nbsp;5G&nbsp;&nbsp;▮</span></div>
+            <div class="screen-body" style="padding-bottom:22px">
+              <button class="back-btn label-sm" id="back-to-today" style="margin:0 0 20px"><span>‹</span> Today · Sep 13</button>
+              <div class="label-lg">5 roti and a cup of dal</div>
+              <div class="num-small" style="margin-top:5px">1:42 PM<span style="color:var(--ink-muted)">&nbsp;·&nbsp;</span>lunch</div>
+
+              <div class="label-sm" style="margin:24px 0 0">Items</div>
+              <div class="detail-item">
+                <div class="top"><span class="name">Roti · 5 whole</span><span class="num-small tabular">400</span></div>
+                <div class="num-small macros" style="color:var(--ink-muted)">P 48g · C 240g · F 12g</div>
+              </div>
+              <div class="detail-item">
+                <div class="top"><span class="name"><span class="flag"></span>Dal · 1 cup</span><span class="num-small tabular">212</span></div>
+                <div class="num-small macros" style="color:var(--ink-muted)">P 12g · C 30g · F 6g · low confidence on quantity</div>
+              </div>
+
+              <hr class="div" />
+              <div style="display:flex; justify-content:space-between; align-items:baseline; padding-top:14px">
+                <span class="label-sm" style="margin:0">Total</span>
+                <span class="num-section tabular">612 kcal</span>
+              </div>
+              <div style="flex:1"></div>
+              <button class="danger">Delete this entry</button>
+            </div>
+            <div class="home-indicator"></div>
+          </div>
+
+          <!-- ================= 06 HISTORY (sheet forced open) ================= -->
+          <div class="pane" id="pane-history" hidden>
+            <div class="status-row"><span>9:41</span><span class="indicators">●●●&nbsp;&nbsp;5G&nbsp;&nbsp;▮</span></div>
+            <div class="screen-body" style="padding-bottom:0; opacity:0.35">
+              <div class="label-sm" style="margin:0 0 14px">Today · Sep 13</div>
+              <div class="status-strip">
+                <div class="num-display tabular" style="color:var(--signal-green)">1,972</div>
+                <div class="num-small tabular goal-line">of 2,340 kcal</div>
+                <div class="track"><div class="fill" style="width:84%; background:var(--signal-green)"></div></div>
+              </div>
+            </div>
+            <div class="backdrop show"></div>
+            <div class="sheet show">
+              <div class="handle"></div>
+              <div class="hist-summary">
+                <div class="label-sm">History</div>
+                <div class="num-section tabular" style="margin-top:10px">61.2 kg</div>
+                <div class="num-small tabular sub">vs 61.8 kg expected · week 3 of 16</div>
+              </div>
+              <hr class="div" style="margin-top:14px" />
+              <div class="hist-list" id="hist-list-5"></div>
+            </div>
+            <div class="home-indicator"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="cap" id="caption">
+      <div class="label-sm" style="margin-bottom:8px"><span class="idx">01 ·</span> Onboarding</div>
+      <div class="body-text" id="caption-text">First launch. No forms, no fields — a prompt, one line of example, and a rule to write your answer on.</div>
+    </div>
+
+    <div class="label-sm" style="margin-bottom:16px">What the screens are protecting</div>
+    <div class="principles">
+      <div class="principle"><span class="mk" style="background:var(--accent-ice)"></span><span class="body-text"><b style="color:var(--ink-primary); font-weight:600">Logging is silent.</b> The entry is the feedback — the agent never replies to a meal you logged, it just appears in the feed.</span></div>
+      <div class="principle"><span class="mk" style="background:var(--accent-ice)"></span><span class="body-text"><b style="color:var(--ink-primary); font-weight:600">Nothing speaks first</b> except one weekly weight question — a data prompt, never advice.</span></div>
+      <div class="principle"><span class="mk" style="background:var(--accent-ice)"></span><span class="body-text"><b style="color:var(--ink-primary); font-weight:600">Recommendations are pulled.</b> Ask the agent something, it answers in the same thread — it never volunteers a plan.</span></div>
+      <div class="principle"><span class="mk" style="background:var(--accent-ice)"></span><span class="body-text"><b style="color:var(--ink-primary); font-weight:600">Each day is its own session.</b> Today only ever shows today; history is a deliberate trip backward, not a scroll.</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const HIST = [
+    { date:"Sep 12", dow:"Fri", kcal:2210, zone:"green" },
+    { date:"Sep 11", dow:"Thu", kcal:2480, zone:"amber" },
+    { date:"Sep 10", dow:"Wed", kcal:1690, zone:"grey"  },
+    { date:"Sep 9",  dow:"Tue", kcal:2690, zone:"red"   },
+    { date:"Sep 8",  dow:"Mon", kcal:2110, zone:"green" },
+    { date:"Sep 7",  dow:"Sun", kcal:2050, zone:"green" },
+    { date:"Sep 6",  dow:"Sat", kcal:1840, zone:"grey"  },
+  ];
+  const zoneVar = z => ({ green:"var(--signal-green)", amber:"var(--signal-amber)", red:"var(--signal-red)", grey:"var(--signal-grey)" }[z]);
+
+  function renderHistList(el){
+    el.innerHTML = HIST.map(d => `
+      <div class="hist-row">
+        <div class="hist-date">
+          <span class="num-small tabular" style="color:var(--ink-primary); font-size:14px">${d.date}</span>
+          <span class="label-sm dow" style="margin:0">${d.dow}</span>
+        </div>
+        <div class="hist-right">
+          <span class="num-small tabular">${d.kcal.toLocaleString()}</span>
+          <span class="zone-dot" style="background:${zoneVar(d.zone)}"></span>
+        </div>
+      </div>`).join("");
+  }
+  renderHistList(document.getElementById("hist-list-4"));
+  renderHistList(document.getElementById("hist-list-5"));
+
+  const CAPTIONS = {
+    "onb-start":    ["01 · Onboarding",  "First launch. No forms, no fields — a prompt, one line of example, and a rule to write your answer on."],
+    "onb-confirm":  ["02 · Confirm",     "The agent extracts a full profile from one message, asks only for what's missing, and confirms once before it locks in the calorie math."],
+    "today-empty":  ["03 · Empty page",  "The page is the input. Ruled lines, a cursor on the first one, nothing announcing that it's empty — an empty notebook doesn't need a label. The day's tally sits at the foot of the sheet."],
+    "today-logged": ["04 · Written on",  "The same page, four lines written on it. What you wrote stays on the line; the agent's number lands out in the margin. No cards, no reply — the line is the confirmation. The dal carries an amber dot: low confidence on quantity, which is where the model is actually weak. Your cursor sits on the next blank line."],
+    "entry-details":["05 · Entry",       "Tap any written line to open it. All the detail lives here — items, quantities, macros, and why the dal is flagged — so the page itself stays clean. No input on this screen."],
+    "history":      ["06 · History",     "Reached by tapping the date header — a bottom sheet, not a tab. Weight trend against the goal line, and a quiet colour dot per day. No streak count, no rank."],
+  };
+
+  const panes = document.querySelectorAll(".pane");
+  const buttons = document.querySelectorAll(".switcher button");
+  const captionLabel = document.querySelector("#caption .label-sm");
+  const captionText = document.getElementById("caption-text");
+
+  function showScreen(target){
+    buttons.forEach(b => b.classList.toggle("active", b.dataset.screen === target));
+    panes.forEach(p => p.hidden = (p.id !== "pane-" + target));
+    const [label, text] = CAPTIONS[target];
+    const [idx, ...rest] = label.split(" · ");
+    captionLabel.innerHTML = `<span class="idx">${idx} ·</span> ${rest.join(" · ")}`;
+    captionText.textContent = text;
+    if (target === "today-logged") closeSheet4();
+  }
+
+  buttons.forEach(btn => btn.addEventListener("click", () => showScreen(btn.dataset.screen)));
+
+  document.querySelectorAll("[data-detail]").forEach(line => {
+    line.addEventListener("click", () => showScreen("entry-details"));
+    line.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showScreen("entry-details"); } });
+  });
+  document.getElementById("back-to-today").addEventListener("click", () => showScreen("today-logged"));
+
+  const headerToggle = document.getElementById("day-header-toggle");
+  const backdrop4 = document.getElementById("backdrop-4");
+  const sheet4 = document.getElementById("sheet-4");
+  function closeSheet4(){
+    backdrop4.classList.remove("show");
+    sheet4.classList.remove("show");
+    headerToggle.classList.remove("open");
+  }
+  headerToggle.addEventListener("click", () => {
+    const opening = !sheet4.classList.contains("show");
+    backdrop4.classList.toggle("show", opening);
+    sheet4.classList.toggle("show", opening);
+    headerToggle.classList.toggle("open", opening);
+  });
+  backdrop4.addEventListener("click", closeSheet4);
+</script>
