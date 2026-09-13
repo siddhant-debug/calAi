@@ -83,11 +83,22 @@ calai_backend/
 └── tests/                    # pytest — plain functions, no LLM calls, exact input→output
 ```
 
-**Adding a new endpoint:**
-1. If it needs an LLM call, get the client via `providers/llm.py`'s `get_llm()`/`get_json_llm()` — never construct a `ChatNVIDIA` instance directly elsewhere, that's how the retry+fallback chain gets bypassed.
-2. Add/extend Pydantic models in `schemas.py`.
-3. Wire the route in `api/routes.py`. `@tool` wrappers (if the route needs to be agent-callable) live here, not in `tools/`.
+**Adding a new endpoint** (⚠️ this spans two agents — see the ownership seam below):
+1. If it needs an LLM call, get the client via `providers/llm.py`'s `get_llm()`/`get_json_llm()` — never construct a `ChatNVIDIA` instance directly elsewhere, that's how the retry+fallback chain gets bypassed. *(`ai-engineer`)*
+2. Add/extend Pydantic models in `schemas.py`. *(`backend-engineer`)*
+3. Wire the route in `api/routes.py`. `@tool` wrappers (if the route needs to be agent-callable) live here, not in `tools/`. *(`backend-engineer`; `ai-engineer` supplies the wrapper code verbatim)*
 4. If the new logic is nondeterministic (calls an LLM), it needs eval coverage, not just a pytest unit test — see `evals/README.md` and `archdocs/ADR-004-eval-harness.md`. If it's pure computation, a `calai_backend/tests/` pytest case with exact input→output is enough.
+5. If a browser will call it, `CORSMiddleware` must cover the origin, and the error envelope must match every other route's. *(`backend-engineer`)*
+
+**Ownership seam inside `calai_backend/`:**
+
+| Files | Owner | Concerns |
+|---|---|---|
+| `main.py`, `api/routes.py`, `config.py`, `schemas.py` | `backend-engineer` | HTTP surface: routing, request/response shapes, CORS, status codes, error envelope, boundary validation, env-var wiring |
+| `services/`, `providers/`, `tools/`, `prompts/`, `calai_agent.py` | `ai-engineer` | LLM/agent logic: orchestration, prompts, model provider, tool functions |
+
+The seam is `routes.py` calling into `services/`. Neither agent edits the other's files — the
+one who needs a change states it verbatim in their report and hands it over.
 
 **Running the backend:**
 ```bash
