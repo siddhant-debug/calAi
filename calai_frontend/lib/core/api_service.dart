@@ -22,12 +22,13 @@ class ApiException implements Exception {
   String toString() => 'ApiException($statusCode): $message';
 }
 
-/// HTTP-only: no app state lives here. Replace `<LOCAL_IP>` with your Mac's
-/// LAN IP for real device / simulator use (see skills/flutter-dev/SKILL.md).
+/// HTTP-only: no app state lives here. `localhost` works for the iOS
+/// Simulator (it shares the host Mac's network stack); a physical device
+/// needs the Mac's LAN IP instead (see skills/flutter-dev/SKILL.md).
 class ApiService {
   final String baseUrl;
 
-  const ApiService({this.baseUrl = 'http://<LOCAL_IP>:8000/api'});
+  const ApiService({this.baseUrl = 'http://localhost:8000/api'});
 
   Future<CalcResponse> calculate(UserProfile profile) async {
     final json = await _post('/calculate', profile.toJson());
