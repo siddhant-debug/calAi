@@ -1,6 +1,6 @@
 # ADR-008: Multi-Turn Slot-Filling During Onboarding — Full-Transcript Re-Extraction
 
-**Status:** Proposed
+**Status:** Accepted — implemented and shipped in `ddca2e6`. Backend (`schemas.py`, `api/routes.py`, `services/agent_service.py`) and frontend (`api_service.dart`, `user_provider.dart`) both `reviewer`-passed, 144/144 pytest + 28/28 flutter test. Verified live on the iOS Simulator against a locally-run backend on 2026-09-14: the two-turn conversation that previously re-asked for already-given fields now reaches `profile_confirmation` with all six fields and a computed target.
 **Date:** 2026-09-14
 **Deciders:** Siddhant Tomar
 **Companions:** ADR-003 (multiagent split — defines `extract_request_fields` as the single-shot structured-extraction call this ADR extends, not replaces), ADR-005 (router/handler registry — `SlotFillPayload.missing` naming reused unchanged), ADR-007 (`AgentRequest`/`AgentResponse` shape and client-side-persistence pattern — this ADR adds one more additive `AgentRequest` field on the same "backend stays stateless per-request, client owns context" model ADR-007 Part 3 established)
