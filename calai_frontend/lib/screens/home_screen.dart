@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_theme.dart';
 import '../models/meal_entry.dart';
+import '../providers/history_provider.dart';
 import '../providers/meal_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/entry_card.dart';
@@ -45,16 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _openHistory() async {
-    final storage = ref.read(storageServiceProvider);
-    final weightHistory = await storage.loadWeightHistory();
-    final days = <HistoryDay>[];
-    for (var i = 0; i < 30; i++) {
-      final date = dateOnly(DateTime.now()).subtract(Duration(days: i));
-      final entries = await storage.loadEntriesForDate(date);
-      if (entries.isEmpty) continue;
-      final total = entries.fold<double>(0, (sum, e) => sum + e.totalKcal);
-      days.add(HistoryDay(date: date, totalKcal: total));
-    }
+    final history = await ref.read(historyProvider.future);
     final goal = ref.read(calorieGoalProvider).value?.calorieGoalKcal ?? 0;
 
     if (!mounted) return;
@@ -63,9 +55,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: Colors.transparent,
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
       builder: (context) => HistorySheet(
-        latestWeightKg: weightHistory.isEmpty ? null : weightHistory.last.weightKg,
+        latestWeightKg: history.latestWeightKg,
         goalKcal: goal,
-        days: days,
+        days: history.days,
         onSelectDate: (date) {
           Navigator.of(context).pop();
           setState(() => _viewedDate = date);

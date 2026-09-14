@@ -30,11 +30,14 @@ expected behaviour. Say it's blocked and move on.
 
 ### What to test per widget/screen
 
-**`day_ring.dart`** (fully specified — safe to test)
-- Renders without error at 0%, 80%, 100%, 115%, 150% fill
-- Correct colour per the thresholds in `flutter-dev/SKILL.md` "Day ring colour logic"
-- Center text shows correct kcal integer
-- Golden test for each of the above states
+**`status_strip.dart`** (fully specified — safe to test)
+- Hero number renders correct kcal integer, colour = `zoneColor(progress)` per the thresholds
+  in `flutter-dev/SKILL.md` "Zone colour signal" (< 80%, 80–100%, 100–115%, > 115%)
+- Accent line fill width = `min(progress, 1.0)` × strip width; track stays `bgSurface`
+- Macro row sums today's entries' `protein_g`/`carbs_g`/`fat_g` correctly
+- Zero-entries state: hero reads "0", `signalGrey`, accent line fill width 0, macro row
+  "P 0g · C 0g · F 0g"
+- Golden test for each zone-threshold state
 
 **`meal_input_bar.dart`**
 - TextField accepts text input
@@ -43,19 +46,32 @@ expected behaviour. Say it's blocked and move on.
 - Empty / whitespace-only submit does not fire the callback
 - ⛔ In-flight/loading appearance — **blocked on pending decision #5**
 
-**`onboarding_screen.dart`**
-- Finish button disabled until all fields valid
-- On valid Finish: calls `POST /api/calculate` with the exact body shape in Step 4
-- ⛔ Page count, forward-only behaviour and step grouping — **not final** (`frontendidea.md`
-  is a sketch); test only what the spec states once it's settled
+**`onboarding_screen.dart`** (conversational thread, not a `PageView`/form — see
+`flutter-dev/SKILL.md` "Onboarding screen")
+- Empty state (no messages yet): shows the headline + example body text, `MealInputBar` with
+  placeholder "Tell me about yourself…"
+- Submitting a message via the input bar calls `onboardingProvider.notifier.sendMessage` and
+  appends a user message to the thread (plain text, no card)
+- Agent messages render via `AgentMessage`, switching on `message_type`
+  (`slot_fill_question` renders a plain question; `profile_confirmation` renders the
+  structured card with fields + `Confirm` button)
+- Tapping `Confirm` on a `profile_confirmation` message calls `userProvider.notifier.confirm`
+  with the previewed profile, and on success navigates to `/home`
+- New message appended → thread auto-scrolls to bottom
+- No "Finish button disabled until valid" behaviour to test — there is no form; validity is
+  the agent's slot-filling loop, not a client-side field check
 
-**`home_screen.dart`**
-- Meal list shows today's entries
-- Swipe-to-delete removes the correct entry (needs a stable id — names can collide) and
-  updates the day total
-- Input bar submission appends an entry
-- ⛔ Ring count / week window — **blocked on pending decision #3**
-- ⛔ One row per submission vs per item — **blocked on pending decision #1**
+**`home_screen.dart`** (today's diary/session screen — see `flutter-dev/SKILL.md` "Today
+screen")
+- Status strip renders today's entries' totals (see `status_strip.dart` above)
+- Entry feed shows one `entry_card.dart` per logged submission (not one row per parsed item —
+  raw text + `total_kcal`, with item chips below), oldest at top, newest appended at bottom
+- Swipe-to-delete removes the correct whole entry (needs a stable id — names can collide) and
+  updates the status strip total
+- Input bar submission appends a `pending` entry card immediately, then transitions to
+  `logged` (or `error`) once the response lands
+- Tapping the "TODAY · <date>" header opens `history_sheet.dart`; tapping a past-day row swaps
+  the same screen's data to that date in place (not a new route)
 
 ### Rules for widget tests
 - No network. Wrap in `ProviderScope` with `overrides` supplying fake services.

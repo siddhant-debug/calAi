@@ -2813,3 +2813,893 @@ fix the router redirect bug now
  M skills/flutter-dev/SKILL.md
  M skills/flutter-review/SKILL.md
 ```
+
+---
+
+## 2026-09-13 20:16:04Z — subagent
+
+- session: `8d0e978e-6951-4e4d-ae1b-bf98644d8d9e`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+fix the router bug then run reviewer
+```
+
+### Working tree at completion
+
+```
+(working tree clean)
+```
+
+---
+
+## 2026-09-14 05:26:53Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+let me know when it's done
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 05:28:06Z — flutter-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: flutter-router-redirect-fix
+stage: flutter-engineer
+files_changed:
+  - calai_frontend/lib/main.dart
+  - calai_frontend/test/widget_test.dart
+analyzer: "dart analyze lib/main.dart: No issues found!"
+contract:
+  consumed: ""
+  breaking: false
+handoffs:
+  - reviewer
+tests:
+  added: []
+  run_cmd: "flutter test"
+  result: "17 passed, 0 failed"
+open_questions: []
+deferred: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/test/widget_test.dart
+```
+
+---
+
+## 2026-09-14 05:28:26Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+run reviewer on the whole P2 unit
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/test/widget_test.dart
+```
+
+---
+
+## 2026-09-14 05:30:18Z — tester
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: P2-router-redirect-fix
+stage: tester
+files_changed:
+  - calai_frontend/test/widget_test.dart
+covers:
+  - test: "CalAiApp navigates to '/home' when a profile is already stored at startup"
+    behaviour: "flutter-engineer's flipped regression test — verified independently that it genuinely exercises the async race (UserNotifier.build() awaits a real SharedPreferences.getInstance() round trip, not synchronously resolved), not just a happy-path end-state check"
+    red_green: "failed before (against reverted buggy per-route redirect) / passes after (current top-level redirect:) — confirmed by temporarily reverting main.dart to the pre-fix router, running the suite, then restoring"
+  - test: "CalAiApp with a stored profile shows onboarding on the very first frame ... and only reaches /home once the async SharedPreferences read resolves"
+    behaviour: "added — makes the race's intermediate state directly observable (single pump shows onboarding despite a stored profile because hasProfile is still null; further pumping shows the top-level redirect re-fires against the current location and reaches /home), rather than only asserting the final settled state"
+    red_green: "failed before (against reverted buggy per-route redirect) / passes after"
+tests:
+  run_cmd: "cd calai_frontend && flutter test"
+  result: "18 passed, 0 failed"
+evals:
+  cases_added: []
+  gate_cmd: ""
+uncovered:
+  - "No test forces a mid-flight profile clear (userProvider.clear()) while already on /home to confirm the top-level redirect also fires correctly in that direction — out of scope for this router-race fix, flag for reviewer if in scope of the P2 unit"
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/test/widget_test.dart
+```
+
+---
+
+## 2026-09-14 05:30:49Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+what's the reviewer verdict
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/test/widget_test.dart
+```
+
+---
+
+## 2026-09-14 05:34:55Z — reviewer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: P2-flutter-buildout-plus-router-fix
+stage: reviewer
+verdict: fail
+gates_run:
+  - {cmd: "cd calai_frontend && dart analyze lib", exit_code: 0}
+  - {cmd: "cd calai_frontend && flutter test", exit_code: 0}
+bucket1:
+  - file: calai_frontend/lib/screens/home_screen.dart
+    line: 48
+    summary: "_openHistory calls storageServiceProvider's service methods directly instead of going through a provider/notifier, violating the documented 'screens only call providers' architecture rule"
+    failure_scenario: "History-aggregation logic (30-day scan, per-day totals) lives only in widget state, untestable via ProviderContainer the way every other storage-touching path in this unit is tested; any future screen needing the same aggregation must duplicate it inline rather than reuse a provider"
+  - file: skills/flutter-test/SKILL.md
+    line: 33
+    summary: "Stale pre-pivot doc still lists day_ring.dart as testable (file deleted), onboarding_screen.dart as having a validation-gated Finish button (now a conversational Confirm), and home_screen.dart as blocked on ring count/week window (ring retired)"
+    failure_scenario: "Next tester invocation loads this skill file, tries to write golden tests for a widget file that doesn't exist (day_ring.dart) and asserts Finish-button-disabled-until-valid behavior that no longer exists in onboarding_screen.dart"
+bucket2:
+  - file: calai_frontend/lib/widgets/status_strip.dart
+    line: 33
+    summary: "TweenAnimationBuilder<Color?> uses ColorTween(begin: targetColor, end: targetColor) — a degenerate tween that never actually animates the 300ms cross-fade the spec requires; color jumps instantly on zone change"
+  - file: calai_frontend/lib/screens/home_screen.dart
+    line: 174
+    summary: "EntryCard/itemBuilder has no outer key (only the nested Dismissible does); a mid-list delete can leak _AppearAnimation's _visible=true state onto a shifted-in card, skipping its appear animation. Delete correctness/storage sync unaffected since Dismissible's own key protects that."
+  - file: calai_frontend/lib/screens/onboarding_screen.dart
+    line: 68
+    summary: "_EmptyState() constructed without const"
+looks_good:
+  - "main.dart's top-level redirect: re-evaluates hasProfile against the CURRENT matchedLocation on every refreshListenable notification, correctly fixing the original race; verified by hand against both new regression tests"
+  - "All models are plain Dart, zero Flutter imports, field names verified against schemas.py field-for-field"
+  - "api_service.dart reads only the normalized {detail:{message,errors}} envelope, no stale string-or-list tolerance code"
+  - "meal_provider.dart replaces entries by stable client-generated id, not name, avoiding the duplicate-name collision bug"
+  - "storage_service.dart keys and shapes match ADR-007 Part 3 exactly; round-trip tests pass"
+  - "AnimationControllers and ScrollControllers disposed correctly; Riverpod 3 AsyncNotifier used throughout, no StateNotifierProvider"
+  - "day_ring.dart deletion is clean, zero dangling references in lib/ or test/"
+  - "agent_message.dart's non-rendering of SlotFillPayload.missing is spec-compliant, not a bug — tester's flagged item #1 can be closed"
+docs_sync_checked: true
+invariants_checked: true
+fix_loop_count: 0
+open_questions: []
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/test/widget_test.dart
+```
+
+---
+
+## 2026-09-14 05:35:25Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+keep going, re-review once both agents finish
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/test/widget_test.dart
+```
+
+---
+
+## 2026-09-14 05:35:53Z — tester
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: P2-flutter-fixloop1
+stage: tester
+files_changed:
+  - /Users/siddhanttomar/Claude/Projects/calAi/skills/flutter-test/SKILL.md
+covers: []
+matrix_rows:
+  covered: []
+  deferred: []
+tests:
+  run_cmd: ""
+  result: "n/a — doc-only fix, no code/test changed"
+evals:
+  cases_added: []
+  gate_cmd: ""
+uncovered: []
+risk: low
+open_questions: []
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:35:57Z — flutter-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: P2-flutter-fixloop-1
+stage: flutter-engineer
+files_changed:
+  - calai_frontend/lib/providers/history_provider.dart
+  - calai_frontend/lib/screens/home_screen.dart
+analyzer: "dart analyze lib/screens/home_screen.dart lib/providers/history_provider.dart: No issues found!"
+contract:
+  consumed: "storage_service.dart's loadWeightHistory() and loadEntriesForDate(date) — now called only from historyProvider, not from the screen; no HTTP/backend contract touched"
+  breaking: false
+handoffs: []
+tests:
+  added: []
+  run_cmd: "flutter test"
+  result: "18/18 passed"
+open_questions: []
+deferred: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:36:13Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+commit this once reviewer passes
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:36:41Z — reviewer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: P2-flutter-history-provider
+stage: reviewer
+verdict: pass
+gates_run:
+  - {cmd: "cd calai_frontend && dart analyze lib", exit_code: 0}
+  - {cmd: "cd calai_frontend && flutter test", exit_code: 0}
+bucket1: []
+bucket2:
+  - {file: "calai_frontend/lib/widgets/status_strip.dart", line: 0, summary: "Dead ColorTween still present (not required this loop)"}
+  - {file: "calai_frontend/lib/screens/home_screen.dart", line: 166, summary: "EntryCard in ListView.separated has no key (not required this loop)"}
+  - {file: "calai_frontend/lib/screens/home_screen.dart", line: 145, summary: "_EmptyState()-equivalent inline widget missing const (not required this loop)"}
+looks_good:
+  - {file: "calai_frontend/lib/providers/history_provider.dart", summary: "AsyncNotifierProvider correctly follows meal_provider.dart/user_provider.dart pattern; storage access isolated in build(), screen only reads the provider"}
+  - {file: "calai_frontend/lib/screens/home_screen.dart", summary: "_openHistory no longer touches storageServiceProvider directly"}
+  - {file: "skills/flutter-test/SKILL.md", summary: "Corrected to match current source (status_strip.dart, conversational onboarding, diary home screen); no stale day_ring.dart or resolved-decision markers remain"}
+docs_sync_checked: true
+invariants_checked: true
+fix_loop_count: 1
+open_questions: []
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:37:17Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+Commit this fix-loop work
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:40:26Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+walk through the onboarding flow
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:42:53Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+show me on the simulator once it's done
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:44:56Z — ui-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: meal-input-bar-paper-line
+stage: ui-engineer
+spec_sections_changed:
+  - "Component patterns → Inputs / MealInputBar"
+  - "Micro-interactions"
+  - "Decisions pending → Resolved by this spec (table)"
+  - "After each file (implementation status table)"
+decisions_resolved:
+  - "MealInputBar chrome vs. ui-diary-preview.html's .paper-line: resolved to match exactly — no box/fill/border-all, single bottom border (inkMuted → accentIce on focus), single-line field, no separate submit button, keyboard TextInputAction.send only."
+decisions_still_open:
+  - "Today screen layout still spec'd as a floating MealInputBar above the keyboard with card-based Entry feed, while the reference shows the input as an inline ruled line within a scrolling notebook page and logged entries as written lines, not cards. Not resolved here — out of scope for this request (input widget chrome only). Flag for a follow-up design pass if the user wants full notebook-page fidelity."
+dart_files_needing_update:
+  - calai_frontend/lib/widgets/meal_input_bar.dart
+  - calai_frontend/lib/screens/onboarding_screen.dart (layout-only impact from the widget's height change; no widget-level change expected)
+  - calai_frontend/lib/screens/home_screen.dart (same layout-only impact)
+tokens_added: []
+handoffs:
+  - to: flutter-engineer
+    what: "Rebuild meal_input_bar.dart against the new 'Inputs / MealInputBar (\"paper line\")' spec in skills/flutter-dev/SKILL.md: drop the bgSurface/radius-10/border-all container and the 40x40 accentIce icon button; render a single-line TextField with only a bottom border (inkMuted, 1px, brightening to accentIce on focus), height 36, no fill, no radius. Set maxLines: 1, textInputAction: TextInputAction.send, wire submission through onSubmitted instead of a button's onTap. Check both call sites (onboarding_screen.dart, home_screen.dart) for layout assumptions (fixed height, padding) that assumed the old boxed size."
+    verbatim: |
+      Component patterns → Inputs / MealInputBar ("paper line") — retired the boxed bgSurface field + separate
+      40×40 accentIce square button. Matches artefacts/ui-diary-preview.html's .paper-line / .paper-line.active
+      exactly: no box, no fill, no border on three sides — a single-line text field sitting directly on bgDeep,
+      styled as one ruled line of the diary page:
+
+      Container(
+        height: 36,
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.inkMuted, width: 1.0)),
+        ),
+        alignment: Alignment.centerLeft,
+        child: TextField(
+          style: AppTypography.body.copyWith(color: AppColors.inkPrimary),
+          maxLines: 1,
+          textInputAction: TextInputAction.send,
+          onSubmitted: onSubmit,
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
+            hintText: hintText,
+            hintStyle: AppTypography.body.copyWith(color: AppColors.inkMuted),
+          ),
+        ),
+      )
+
+      - Unfocused: bottom border only, 1px, inkMuted. No fill colour, no radius, no border on top/left/right.
+      - Focused: bottom border brightens to accentIce, still 1px (not 1.5px).
+      - No separate submit button. Submission is the keyboard's own Send action (TextInputAction.send → onSubmitted).
+        Do not add a trailing icon or button, filled or unfilled, to this widget.
+      - Single line, not multiline — text scrolls horizontally within the field rather than wrapping.
+open_questions: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:45:15Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+show it on the simulator once it's done
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:45:47Z — flutter-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: meal-input-bar-paper-line
+stage: flutter-engineer
+files_changed:
+  - /Users/siddhanttomar/Claude/Projects/calAi/calai_frontend/lib/widgets/meal_input_bar.dart
+analyzer: "dart analyze lib/widgets/meal_input_bar.dart: 0 issues; lib/screens/home_screen.dart, lib/screens/onboarding_screen.dart: 0 issues"
+contract:
+  consumed: "no backend contract touched; purely visual widget change, public API (onSubmit, hintText) unchanged"
+  breaking: false
+handoffs:
+  - tester
+  - reviewer
+tests:
+  added: []
+  run_cmd: "flutter test"
+  result: "18/18 passed, no existing test referenced the old boxed/button structure so none needed updating"
+open_questions: []
+deferred: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:46:05Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+show it on the simulator once it's done
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+```
+
+---
+
+## 2026-09-14 05:47:24Z — tester
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: meal-input-bar-paper-line-tests
+stage: tester
+files_changed:
+  - calai_frontend/test/widgets/meal_input_bar_test.dart
+covers:
+  - test: "submitting via keyboard send action calls onSubmit with trimmed text and clears the field"
+    behaviour: "TextInputAction.send -> onSubmitted -> widget.onSubmit(trimmed text), controller cleared"
+    red_green: "failed before (guard-broken build still passed since this path wasn't affected) / passes after — verified via focus-color and guard mutation tests below, this one always exercised the happy path correctly"
+  - test: "submitting empty text does not call onSubmit"
+    behaviour: "empty string guard in _submit"
+    red_green: "failed before (guard removed) / passes after (guard restored)"
+  - test: "submitting whitespace-only text does not call onSubmit"
+    behaviour: "trim().isEmpty guard in _submit"
+    red_green: "failed before (guard removed) / passes after (guard restored)"
+  - test: "has no icon, tappable button, or GestureDetector chrome"
+    behaviour: "regression guard for the boxed-field + 40x40-button removal — no Icon/IconButton/*Button/GestureDetector/InkWell in the tree"
+    red_green: "passes against current implementation; not mutated (no separate red state to construct without reintroducing the removed chrome, which is out of scope) — this is a coverage addition for the actual design-change target, matrix-relevant as a structural regression guard"
+  - test: "bottom border is inkMuted when unfocused and accentIce when focused"
+    behaviour: "focus-driven border color ternary in build()"
+    red_green: "failed before (ternary hardcoded to inkMuted) / passes after (ternary restored)"
+tests:
+  run_cmd: "flutter test test/widgets/meal_input_bar_test.dart (and full: flutter test)"
+  result: "5/5 new tests pass; 23/23 full suite passes"
+evals:
+  cases_added: []
+  gate_cmd: ""
+uncovered:
+  - "Screen-level integration (that home_screen.dart / onboarding_screen.dart actually wire MealInputBar's onSubmit into their own handlers) is out of scope for this widget-level unit — flutter-engineer's report didn't flag a screen-level regression, and this widget's public contract (onSubmit, hintText) is what's tested here."
+  - "Multi-line / very long text wrapping behavior not covered — widget is maxLines: 1 by contract, no wrap behavior exists to test."
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+?? calai_frontend/test/widgets/meal_input_bar_test.dart
+```
+
+---
+
+## 2026-09-14 05:47:42Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+show it on the simulator
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+?? calai_frontend/test/widgets/meal_input_bar_test.dart
+```
+
+---
+
+## 2026-09-14 05:48:41Z — reviewer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: meal-input-bar-paper-line-chrome
+stage: reviewer
+verdict: fail
+gates_run:
+  - {cmd: "dart analyze lib/widgets/meal_input_bar.dart", exit_code: 0}
+  - {cmd: "flutter test", exit_code: 0}
+bucket1:
+  - file: skills/flutter-dev/SKILL.md
+    line: 563
+    summary: "File-status table still marks widgets/meal_input_bar.dart as in-progress (🔄) with a note claiming it 'still reflects the retired boxed/40×40-button design' — stale, since this unit completed and verified that exact rework"
+    failure_scenario: "A future session (or agent) reads SKILL.md's status table, sees meal_input_bar.dart marked 🔄 'needs rework', and either re-does already-completed work or distrusts the widget's current (correct) state instead of trusting the passing tests"
+bucket2: []
+looks_good:
+  - "meal_input_bar.dart matches the SKILL.md spec field-for-field: 36px height, single bottom border only, inkMuted/accentIce focus states at 1px, maxLines 1, TextInputAction.send -> onSubmitted, zero button/icon widgets"
+  - "Both call sites (home_screen.dart:181, onboarding_screen.dart:96) keep the same symmetric padding — no leftover spacing sized for the old boxed widget"
+  - "meal_input_bar_test.dart's no-chrome test is a real, tight regression guard against the exact user-reported bug (boxed surface + separate button)"
+  - "dart analyze and flutter test both exit 0, 23/23 tests passing (up from 18)"
+docs_sync_checked: true
+invariants_checked: true
+fix_loop_count: 0
+open_questions: []
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+?? calai_frontend/test/widgets/meal_input_bar_test.dart
+```
+
+---
+
+## 2026-09-14 05:49:53Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+commit this
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+?? calai_frontend/test/widgets/meal_input_bar_test.dart
+```
+
+---
+
+## 2026-09-14 05:51:45Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+I just want it reachable from the iOS simulator on my machine
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+?? calai_frontend/test/widgets/meal_input_bar_test.dart
+```
+
+---
+
+## 2026-09-14 05:53:42Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+let's go with Fly.io
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+?? calai_frontend/test/widgets/meal_input_bar_test.dart
+```
+
+---
+
+## 2026-09-14 05:54:46Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yes go ahead with Fly.io
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/main.dart
+ M calai_frontend/lib/screens/home_screen.dart
+ M calai_frontend/lib/widgets/meal_input_bar.dart
+ M calai_frontend/test/widget_test.dart
+ M skills/flutter-dev/SKILL.md
+ M skills/flutter-test/SKILL.md
+?? calai_frontend/lib/providers/history_provider.dart
+?? calai_frontend/test/widgets/meal_input_bar_test.dart
+```

@@ -4,16 +4,18 @@
 // based structure, which no longer exists.
 //
 // While writing this rewrite, pumping the real CalAiApp end-to-end (go_router
-// redirect included) with a profile already in storage surfaced a NEW,
-// previously-unknown bug — see the second test below. Because of that bug,
-// the app never actually reaches '/home' via the router in this scenario,
-// so the Material/ListTile-ancestor crash regression (the thing this file
-// was specifically asked to prove) is instead verified by rendering
+// redirect included) with a profile already in storage surfaced a redirect
+// race: the '/' route's own redirect committed to '/onboarding' before the
+// async SharedPreferences read resolved, and go_router's refreshListenable
+// then re-evaluated the current ('/onboarding') route rather than '/' again,
+// so '/home' was never reached. Fixed in main.dart by moving the redirect to
+// a top-level `redirect:` on GoRouter itself, re-evaluated on every
+// refreshListenable notification regardless of current location — see the
+// second test below, now asserting the correct ('/home') outcome. The
+// Material/ListTile-ancestor crash regression (the thing this file was
+// specifically asked to prove) is still additionally verified by rendering
 // HomeScreen directly (third test) with the exact same stored-profile state
-// the router would hand it — this is a deliberate, documented workaround,
-// not a downgrade of the assertion: it still pumps the real HomeScreen
-// widget tree and asserts zero FlutterErrors, not "doesn't use ListTile" by
-// inspection.
+// the router would hand it.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,9 +53,10 @@ void main() {
   });
 
   testWidgets(
-    'BUG (found while rewriting this test, not fixed here — tester does not own lib/): '
-    "CalAiApp does not navigate to '/home' when a profile is already stored at startup; "
-    "it stays on '/onboarding' indefinitely",
+    'CalAiApp navigates to \'/home\' when a profile is already stored at startup '
+    '(regression test for the redirect race fixed in main.dart: the router now uses a '
+    "top-level `redirect:` re-evaluated on every refreshListenable notification, instead "
+    "of a per-route redirect on '/' only)",
     (tester) async {
       SharedPreferences.setMockInitialValues({'profile': _storedProfileJson});
 
@@ -71,24 +74,51 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Likely mechanism (see main.dart's `_ProfileRefresh`/redirect):
-      // `ref.listenManual(userProvider, ..., fireImmediately: true)` reports
-      // hasProfile == false the instant userProvider is still AsyncLoading,
-      // so the '/' route's redirect commits to '/onboarding' before the
-      // (inherently async) SharedPreferences read finishes. Once it
-      // finishes and `_refresh.update(true)` fires `notifyListeners()`,
-      // go_router's `refreshListenable` re-parses the CURRENT location
-      // ('/onboarding', which has no redirect of its own) rather than '/'
-      // again, so it never reaches '/home'. This documents the ACTUAL
-      // (buggy) current behavior — expected/correct behavior is landing on
-      // '/home' — flagged to flutter-engineer via this unit's report, not
-      // silently left uncovered.
-      expect(
-        find.text('Tell me about yourself and your goal.'),
-        findsOneWidget,
-        reason: 'documents current behavior; update this test once the redirect race is fixed',
+      expect(find.text('ENTRIES'), findsOneWidget);
+      expect(find.text('Tell me about yourself and your goal.'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'CalAiApp with a stored profile shows onboarding on the very first frame '
+    '(profile load is still pending) and only reaches /home once the async '
+    'SharedPreferences read resolves and refreshListenable re-fires — this is '
+    'the exact race from the original bug: the first frame commits to '
+    "'/onboarding' before hasProfile is known, and the fix must re-evaluate "
+    "the redirect against the CURRENT location (not just '/') once it is.",
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'profile': _storedProfileJson});
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiServiceProvider.overrideWithValue(
+              FakeApiService(
+                calcResponse: const CalcResponse(bmrKcal: 1600, tdeeKcal: 2200, calorieGoalKcal: 2000),
+              ),
+            ),
+          ],
+          child: const CalAiApp(),
+        ),
       );
+
+      // No further pump yet: userProvider's build() is an in-flight Future
+      // (SharedPreferences.getInstance() has not resolved), so hasProfile is
+      // still null and the '/' route's own redirect has already committed to
+      // '/onboarding' for this frame. If this assertion ever fails because
+      // the app skips straight to '/home', the async load is no longer
+      // actually async in this scenario and the rest of this test is moot —
+      // but it currently does reproduce the pending state.
+      expect(find.text('Tell me about yourself and your goal.'), findsOneWidget);
       expect(find.text('ENTRIES'), findsNothing);
+
+      // Let the SharedPreferences future resolve and refreshListenable fire.
+      await tester.pumpAndSettle();
+
+      // The fix: redirect re-evaluated against the CURRENT location
+      // ('/onboarding', not '/'), so it now correctly lands on '/home'.
+      expect(find.text('ENTRIES'), findsOneWidget);
+      expect(find.text('Tell me about yourself and your goal.'), findsNothing);
     },
   );
 

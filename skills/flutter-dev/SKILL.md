@@ -121,6 +121,7 @@ Resolved by this spec (previously rows 1–5 of the old table):
 | 3 | Day-ring range | Moot — the ring is retired. Today's totals live in the status strip; every other day is reachable through the history sheet, not a fixed weekday row. |
 | 4 | `meal_type` affordance | Inferred from clock, shown as quiet read-only metadata on the entry card (never a picker or chip row), agent may override from text. Per the brief, the user is never asked to pick one. |
 | 5 | In-flight state for 9–40s calls | Optimistic pending entry card with an indeterminate accentIce sweep bar — see "Entry card, pending state." Input bar itself stays enabled during a send (supports logging a second entry while the first is still in flight). |
+| 6 | `MealInputBar` chrome vs. `artefacts/ui-diary-preview.html`'s `.paper-line` reference (2026-09-14) | Reconciled to match the reference exactly: no box/fill/all-round border, single bottom border brightening to `accentIce` on focus, single-line field, and no separate submit button — keyboard `TextInputAction.send` only. See "Inputs / MealInputBar" below for the full spec and the reasoning for dropping the button rather than keeping a minimal affordance. |
 
 ---
 
@@ -240,14 +241,51 @@ BoxDecoration(
 )
 ```
 
-**Inputs / MealInputBar** — `bgSurface`, radius 10, `inkMuted` hint, `accentIce` focus
-border (1.5px):
+**Inputs / MealInputBar ("paper line")** — retired the boxed `bgSurface` field + separate
+40×40 `accentIce` square button. Matches `artefacts/ui-diary-preview.html`'s `.paper-line` /
+`.paper-line.active` exactly: no box, no fill, no border on three sides — a single-line text
+field sitting directly on `bgDeep`, styled as one ruled line of the diary page:
 ```dart
-// focused border:
-Border.all(color: AppColors.accentIce, width: 1.5)
-// unfocused border:
-Border.all(color: AppColors.inkMuted, width: 1.0)
+Container(
+  height: 36,
+  decoration: BoxDecoration(
+    border: Border(bottom: BorderSide(color: AppColors.inkMuted, width: 1.0)),
+  ),
+  alignment: Alignment.centerLeft,
+  child: TextField(
+    style: AppTypography.body.copyWith(color: AppColors.inkPrimary),
+    maxLines: 1,
+    textInputAction: TextInputAction.send,
+    onSubmitted: onSubmit, // fires on the keyboard's own Send/Return key — see below
+    decoration: InputDecoration(
+      border: InputBorder.none,
+      isDense: true,
+      contentPadding: EdgeInsets.zero,
+      hintText: hintText,
+      hintStyle: AppTypography.body.copyWith(color: AppColors.inkMuted),
+    ),
+  ),
+)
 ```
+- **Unfocused:** bottom border only, 1px, `inkMuted`. No fill colour, no radius, no border on
+  top/left/right.
+- **Focused:** bottom border brightens to `accentIce`, still 1px (not the 1.5px used elsewhere
+  for boxed inputs — a paper line stays a hairline even lit up; a thicker ring is a boxed-input
+  affordance this isn't).
+- **No separate submit button — decided, not just matched by default.** The reference renders
+  zero button elements for this control; submission is the keyboard's own Send action
+  (`TextInputAction.send` → `onSubmitted`). This is deliberately not "we'll add a minimal
+  affordance to be safe": `textInputAction` maps to the on-screen keyboard's own return-key
+  label on iOS, Android, and the Chrome dev target used for verification (see "Coding rules") —
+  there's no target platform where the affordance is unavailable or hidden, so there's no case
+  where a user has typed a meal and has no way to submit it. A trailing icon would be a second,
+  redundant way to do the same thing on every platform that matters here, which is exactly the
+  kind of accessory this design language spends its restraint avoiding. Do not add a trailing
+  icon or button, filled or unfilled, to this widget.
+- **Single line, not multiline** — the reference's `.paper-line` is a fixed 36px row; text
+  scrolls horizontally within the field rather than wrapping to a second line. This is a
+  behaviour change from the current multiline `TextField`, not just a style change — see
+  `dart_files_needing_update` in the report for this change.
 
 **Primary button** — `accentIce` background, `bgDeep` text, radius 10, height 52,
 `labelLg` style. Never use `ElevatedButton` defaults — always build with `GestureDetector`
@@ -470,7 +508,8 @@ Centred vertically in the entry feed area.
 
 ### Micro-interactions
 
-- MealInputBar send button: scale 0.92 on press, 120ms, then back
+- MealInputBar (paper line) focus: bottom-border colour transitions `inkMuted` → `accentIce`,
+  120ms ease — no press/scale animation, since there's no longer a button element to press
 - Entry card appear (logged or pending): `FadeTransition` + `SlideTransition` (from y+20 →
   y+0), 200ms, staggered by index (delay = index × 40ms) — same timing as the old MealCard
 - Entry card pending → logged transition: chips and kcal number fade in, 200ms, once the
@@ -521,13 +560,13 @@ Update the session memory implementation state table:
 | core/api_service.dart    | ✅ | add `/api/agent` call against ADR-007 Part 1's resolved `message_type`/payload contract |
 | providers/user_provider.dart | ✅ | also holds `calorieGoalProvider` and the onboarding conversation notifier |
 | providers/meal_provider.dart | ✅ | session-scoped by date |
-| widgets/meal_input_bar.dart | ✅ | always-enabled during send; `onSubmit` now `ValueChanged<String>?` |
+| widgets/meal_input_bar.dart | ✅ | always-enabled during send; `onSubmit` now `ValueChanged<String>?`. **2026-09-14: reworked to the "paper line" treatment** (no box, no fill, single bottom border, no submit button, single-line field, `TextInputAction.send`) — implementation matches the "Inputs / MealInputBar" spec, verified by `test/widgets/meal_input_bar_test.dart` (5/5 passing, including a no-chrome regression guard). |
 | widgets/agent_message.dart | ✅ | new; recommendation/weekly-checkin layouts composed from existing primitives only, not literally spec'd — flagged to ui-engineer |
 | widgets/entry_card.dart | ✅ | new, 3 states |
 | widgets/status_strip.dart | ✅ | new |
 | widgets/history_sheet.dart | ✅ | new; "vs expected weight · week N of M" line omitted — no stored program-start date/duration to compute it, see flutter-engineer report |
-| screens/onboarding_screen.dart | ✅ | conversational, not PageView |
-| screens/home_screen.dart | ✅ | today's diary/session screen; ListTile/Material crash fixed (no ListTile used) |
+| screens/onboarding_screen.dart | ✅ | conversational, not PageView. Consumes `MealInputBar` — no screen-level change expected from the 2026-09-14 paper-line rework beyond whatever layout shift the widget's own resize (boxed field → 36px line) causes. |
+| screens/home_screen.dart | ✅ | today's diary/session screen; ListTile/Material crash fixed (no ListTile used). Consumes `MealInputBar` — same note as onboarding_screen.dart above. |
 | main.dart                | ✅ | `/` redirect via go_router `refreshListenable` bridged to `userProvider` |
 
 Retired: `widgets/day_ring.dart` — do not implement.

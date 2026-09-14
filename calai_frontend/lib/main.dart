@@ -33,11 +33,17 @@ class _CalAiAppState extends ConsumerState<CalAiApp> {
   final _refresh = _ProfileRefresh();
   late final GoRouter _router = GoRouter(
     refreshListenable: _refresh,
+    redirect: (context, state) {
+      final hasProfile = _refresh.hasProfile;
+      if (hasProfile == null) return null;
+      final onboarding = state.matchedLocation == '/onboarding';
+      final home = state.matchedLocation == '/home';
+      if (hasProfile && !home) return '/home';
+      if (!hasProfile && !onboarding) return '/onboarding';
+      return null;
+    },
     routes: [
-      GoRoute(
-        path: '/',
-        redirect: (context, state) => _refresh.hasProfile == true ? '/home' : '/onboarding',
-      ),
+      GoRoute(path: '/', redirect: (context, state) => '/onboarding'),
       GoRoute(path: '/onboarding', builder: (context, _) => const OnboardingScreen()),
       GoRoute(path: '/home', builder: (context, _) => const HomeScreen()),
     ],
