@@ -14,6 +14,7 @@ Content discipline (pulled from how ADR-003 and ADR-004 were actually written �
 - **Context** must state the concrete cost(s) of *not* making this decision — what's broken, missing, or risky today — not just describe the feature being added.
 - **Options Considered** must include at least one real rejected option with an honest tradeoff table (effort, what it fixes, what it doesn't, resume/narrative value where relevant) — not a strawman option nobody would pick.
 - **Decision** must include concrete contracts — function signatures, request/response shapes, directory structure — that the implementing engineer can code directly against, not prose-only description.
+- **If this design reuses an existing component/primitive for a new interaction pattern** (e.g. a stateless single-shot call now backing a multi-turn conversation), explicitly re-verify that component's original assumptions still hold under the new usage, and state the answer in Context or Decision — don't just describe the new usage and assume compatibility. (Added after ADR-008: ADR-007 defined `slot_fill_question`'s response shape — implying a multi-turn back-and-forth — without ever checking whether the single-shot, single-message extraction primitive underneath it, built for one-shot meal-parsing, could actually carry state across those turns. It couldn't, and the bug shipped.)
 - **Action Items** must be a checklist the implementing engineer and `reviewer` can literally tick off, each item independently verifiable (a real command to run, a file that either exists or doesn't, a number that either meets a bar or doesn't).
 
 File ownership for any ADR you write: see `rules/ownership.md` for which engineer owns which
@@ -39,6 +40,8 @@ the Options Considered tradeoff table just because its own template is lighter.
 - [ ] Options Considered includes ≥1 real rejected option with an honest tradeoff table
 - [ ] Decision includes concrete, directly-codable contracts (signatures/shapes/directory
       structure) — not prose-only
+- [ ] If reusing an existing component for a new interaction pattern, its original assumptions
+      (stateless vs. stateful, single-shot vs. multi-turn) were explicitly re-checked, not assumed
 - [ ] Action Items are each independently verifiable (a command, a file, a number)
 - [ ] If the requirement is a product/business decision, it's in `open_questions` below, not
       guessed

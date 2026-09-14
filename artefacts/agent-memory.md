@@ -3703,3 +3703,1158 @@ yes go ahead with Fly.io
 ?? calai_frontend/lib/providers/history_provider.dart
 ?? calai_frontend/test/widgets/meal_input_bar_test.dart
 ```
+
+---
+
+## 2026-09-14 05:57:56Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yeah let's set up Fly.io
+```
+
+### Working tree at completion
+
+```
+(working tree clean)
+```
+
+---
+
+## 2026-09-14 06:27:10Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yeah go with render, set it up
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 06:44:36Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yes go with render, set it up
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 06:46:12Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+let's do Cloudflare Tunnel self-host
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 06:50:09Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yeah set up cloudflare tunnel
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 07:07:32Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yes go ahead with render setup
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 07:14:46Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+commit the localhost fix and keep testing onboarding
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_frontend/lib/core/api_service.dart
+```
+
+---
+
+## 2026-09-14 07:29:38Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+continue
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 07:30:16Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+fold it into the same unit now
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+```
+
+---
+
+## 2026-09-14 07:31:43Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+show me the ADR when it's ready
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:31:56Z — architecture-designer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: onboarding-slot-filling-cross-turn-bug
+stage: architecture-designer
+adr_path: "archdocs/ADR-008-onboarding-conversation-history.md"
+adr_number: 8
+companions: [3, 5, 7]
+handoffs:
+  - to: backend-engineer
+    what: >
+      Add `AgentRequest.conversation_history: list[str] | None = None` to
+      calai_backend/schemas.py (prior user messages only, oldest first, excludes
+      current `message`). Update calai_backend/api/routes.py's /api/agent handler
+      to pass `req.conversation_history` through to `run_agent(...)`. No other
+      schema changes. Verify with the exact commands in ADR-008 Action Items 1-2,
+      and that `pytest calai_backend/tests/ -v` still exits 0 (Action Item 10).
+  - to: ai-engineer
+    what: >
+      In calai_backend/services/agent_service.py: give `extract_request_fields`
+      an additive optional `conversation_history: list[str] | None = None` param
+      (every existing call site keeps working unmodified since it's a new
+      trailing optional arg). Concatenate `(conversation_history or []) + [message]`
+      and rewrite EXTRACTION_PROMPT so profile fields (weight_kg/height_cm/age/
+      gender/activity_level/goal/goal_rate_kg_per_week) are extracted from ALL
+      messages combined (last-stated value wins on conflict), while meal_text/
+      meal_type/intent are extracted from only the latest message — these are two
+      distinct prompt instructions, not one blanket "use everything." Thread the
+      same param through `_run_agent_orchestrator`/`run_agent` into the
+      `extract_request_fields` call. See ADR-008 Decision section for the exact
+      prompt shape and Action Items 3-5 for verification commands.
+  - to: flutter-engineer
+    what: >
+      In calai_frontend/lib/core/api_service.dart, add `List<String>?
+      conversationHistory` param to `agent()`, included in the POST body as
+      `conversation_history` only when non-null/non-empty (exact snippet in
+      ADR-008). In calai_frontend/lib/providers/user_provider.dart's
+      `OnboardingNotifier.sendMessage`, accumulate prior user-message texts from
+      `state.value` (read calai_frontend/lib/models/conversation_message.dart
+      first for the real field names — ADR-008's snippet uses illustrative
+      names) and pass them as `conversationHistory` on every call. Verify:
+      `dart analyze` clean on both files, plus a manual two-turn onboarding run
+      against the local backend confirming the agent doesn't re-ask for
+      already-given fields (ADR-008 Action Items 8-9).
+open_questions: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:32:14Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+continue with ai-engineer next
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:33:12Z — backend-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: ADR-008-backend-contract
+stage: backend-engineer
+files_changed:
+  - calai_backend/schemas.py
+  - calai_backend/api/routes.py
+contract:
+  before: "AgentRequest{message: str, profile: CalcRequest|None, trigger: Literal['message','weekly_checkin']}"
+  after: "AgentRequest{message: str, profile: CalcRequest|None, trigger: Literal['message','weekly_checkin'], conversation_history: list[str]|None = None} -- additive optional field, list of prior user messages oldest-first, excludes current `message`"
+  breaking: false
+handoffs:
+  - to: ai-engineer
+    what: "Thread conversation_history through agent_service.py per ADR-008 action items 3-5: add optional conversation_history: list[str] | None = None param to extract_request_fields, _run_agent_orchestrator, and run_agent (all default None, zero-edit compatible with existing call sites); update EXTRACTION_PROMPT to extract profile fields from the full combined transcript while meal_text/meal_type/intent still come from only the latest message. Also add the regression test from ADR-008 action item 6 to test_agent_service.py, and update test_routes.py's run_agent mock (currently a lambda with a fixed signature) so it accepts the new kwarg -- it currently causes test_agent_route_returns_200_with_agent_response_shape to fail with TypeError."
+    verbatim: "def extract_request_fields(message: str, llm: BaseChatModel | None, conversation_history: list[str] | None = None) -> ParsedRequest: ... build all_messages = (conversation_history or []) + [message]; format EXTRACTION_PROMPT over all of them for profile-field extraction only, while meal_text/meal_type/intent still extract from message (the latest turn) alone. run_agent(message, llm, profile=None, trigger='message', conversation_history: list[str] | None = None) threads straight into _run_agent_orchestrator -> extract_request_fields."
+tests:
+  added: []
+  run_cmd: "pytest calai_backend/tests/ -v"
+  result: "141 passed, 1 failed (test_agent_route_returns_200_with_agent_response_shape) -- expected: fails because run_agent/its test mock don't yet accept conversation_history, which is ai-engineer's companion change per ADR-008 action items 3/5. No other test regressed."
+logging_added: []
+open_questions: []
+deferred:
+  - "test_routes.py mock update and ADR-008 action item 6 regression test are ai-engineer's/tester's follow-up, not done here per explicit scope boundary (agent_service.py off-limits)."
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:33:33Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+wait for it, then run reviewer on backend
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:34:40Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+add that DoD checklist rule now
+```
+
+### Working tree at completion
+
+```
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:36:05Z — ai-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: ADR-008-service-logic
+stage: ai-engineer
+files_changed:
+  - /Users/siddhanttomar/Claude/Projects/calAi/calai_backend/services/agent_service.py
+  - /Users/siddhanttomar/Claude/Projects/calAi/calai_backend/tests/test_agent_service.py
+  - /Users/siddhanttomar/Claude/Projects/calAi/calai_backend/tests/test_routes.py
+contract:
+  before: "extract_request_fields(message: str, llm) -> ParsedRequest; _run_agent_orchestrator(message, llm, profile=None, trigger='message'); run_agent(message, llm, profile=None, trigger='message')"
+  after: "extract_request_fields(message: str, llm, conversation_history: list[str] | None = None) -> ParsedRequest; _run_agent_orchestrator(message, llm, profile=None, trigger='message', conversation_history=None); run_agent(message, llm, profile=None, trigger='message', conversation_history=None) — all additive, old call sites unmodified"
+  breaking: false
+handoffs: []
+tests:
+  added:
+    - test_extract_request_fields_conversation_history_carries_forward_earlier_turn_fields
+    - test_extract_request_fields_builds_conversation_block_with_all_messages
+  run_cmd: "pytest calai_backend/tests/ -v"
+  result: "144 passed, 0 failed"
+evals:
+  ran: false
+  cmd: ""
+  result: "N/A — evals/ harness scores only parse_meal_text (confirmed via evals/README.md); EXTRACTION_PROMPT (extract_request_fields) is outside its scope, per ADR-008's own Action Item 7. No dataset/gate applies to this prompt change."
+model_verification: ""
+logging_added: []
+open_questions: []
+deferred: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:36:43Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+ok proceed with flutter fix once backend passes
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:38:11Z — reviewer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: ADR-008-onboarding-conversation-history-backend
+stage: reviewer
+verdict: pass
+gates_run:
+  - {cmd: "python3 -m pytest calai_backend/tests -v", exit_code: 0}
+bucket1: []
+bucket2:
+  - {file: "calai_backend/services/agent_service.py", line: 182, summary: "Pre-existing (not introduced here) brace-escaping bug: .replace('{','{{') before .format() produces literal double-braces in the prompt if a message contains { or }, since .format() doesn't re-scan substituted values. This diff propagates the same pattern into conversation_block construction. Low real-world impact for meal/profile text."}
+looks_good:
+  - {summary: "AgentRequest.conversation_history, routes.py passthrough, and extract_request_fields/_run_agent_orchestrator/run_agent signatures match ADR-008's Decision section verbatim, fully additive."}
+  - {summary: "EXTRACTION_PROMPT explicitly splits profile-fields-from-full-transcript vs. meal_text/meal_type/intent-from-latest-message as two numbered instructions with an anti-example, avoiding the ambiguous 'use everything' failure mode called out in the brief."}
+  - {summary: "Both new tests are genuinely multi-call: one drives two real sequential extract_request_fields calls (turn 1 incomplete, turn 2 with history, asserting all 6 fields land); the other captures the actual formatted prompt string and asserts both turns' text are present."}
+  - {summary: "Zero edits to any existing extract_request_fields(...) call site in test files, exactly matching ADR Action Item 3's non-breaking verification; 144/144 tests pass including pre-existing suite."}
+  - {summary: "Action Item 7 (eval-harness scope note) satisfied via explicit one-line comment in test_agent_service.py stating evals/ is single-message-only and this pytest case is the permanent regression guard."}
+docs_sync_checked: true
+invariants_checked: true
+fix_loop_count: 0
+open_questions: []
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:38:32Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+test onboarding on simulator again
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:39:43Z — flutter-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: ADR-008-frontend
+stage: flutter-engineer
+files_changed:
+  - calai_frontend/lib/core/api_service.dart
+  - calai_frontend/lib/providers/user_provider.dart
+  - calai_frontend/test/support/fake_api_service.dart
+analyzer: "dart analyze lib/core/api_service.dart lib/providers/user_provider.dart: No issues found!"
+contract:
+  consumed: "POST /api/agent — added optional conversation_history: list[str] field, sent only when non-empty, prior USER messages oldest-first excluding current message"
+  breaking: false
+handoffs: [tester, reviewer]
+tests:
+  added: []
+  run_cmd: "flutter test"
+  result: "23/23 passed"
+open_questions: []
+deferred: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:40:02Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+test onboarding again in simulator
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+```
+
+---
+
+## 2026-09-14 07:41:27Z — tester
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: ADR-008-frontend-multiturn-coverage
+stage: tester
+files_changed:
+  - calai_frontend/test/providers/onboarding_provider_test.dart
+covers:
+  - test: "first sendMessage call sends no conversation history"
+    behaviour: "OnboardingNotifier.sendMessage's first-turn call passes conversationHistory: null (no prior user messages to accumulate)"
+    red_green: "not applicable as a regression check (trivially true under both old/new code) — included as baseline, not the bug guard"
+  - test: "second sendMessage call sends exactly the first message as history, not the current message and not any agent response text"
+    behaviour: "after one exchange, second call's conversationHistory is exactly ['I am 30, male, 80kg, 180cm'] — prior USER message accumulated, current message excluded, agent response text excluded"
+    red_green: "failed before (temporarily reverted the conversationHistory: arg in user_provider.dart -> Actual: <null>) / passes after (restored)"
+  - test: "third sendMessage call sends both prior user messages, oldest first"
+    behaviour: "after two exchanges, third call's conversationHistory is ['msg1', 'msg2'] in oldest-first order — direct regression guard for ADR-008's original cross-turn state-loss bug"
+    red_green: "failed before (same revert -> Actual: <null>) / passes after (restored)"
+matrix_rows:
+  covered: []
+  deferred:
+    - row: "backend multi-turn regression test (ADR-008 Action Item 6)"
+      reason: "backend half of this unit, owned separately — not in scope for this frontend-only tester pass"
+    - row: "eval-harness multi-turn coverage (ADR-008 Action Item 7)"
+      reason: "ADR-008 itself notes this is a pytest regression concern per its own text, not a golden-dataset case; backend half, not in scope here"
+tests:
+  run_cmd: "cd calai_frontend && flutter test"
+  result: "26/26 passed (23 pre-existing + 3 new); dart analyze shows only one pre-existing unrelated info-level issue in test/widgets/meal_input_bar_test.dart (unnecessary_import), not touched by this change"
+evals:
+  cases_added: []
+  gate_cmd: ""
+uncovered:
+  - "Backend-side conversation_history threading (extract_request_fields, run_agent, routes.py) — out of scope, separate unit"
+  - "Widget/UI-level rendering of an onboarding screen using accumulated history — only provider-level logic was in scope per the brief"
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:41:48Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+test onboarding again on simulator
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:42:40Z — reviewer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: adr-008-frontend
+stage: reviewer
+verdict: pass
+gates_run:
+  - {cmd: "dart analyze lib/core/api_service.dart lib/providers/user_provider.dart", exit_code: 0}
+  - {cmd: "dart analyze", exit_code: 0}
+  - {cmd: "flutter test", exit_code: 0}
+bucket1: []
+bucket2:
+  - {file: "archdocs/ADR-008-onboarding-conversation-history.md", line: 3, summary: "Status header still reads 'Proposed' though both backend and frontend halves are implemented and reviewed — flip to Implemented once the dispatcher's manual Simulator re-test confirms the live bug is gone (per CLAUDE.md, this is sdlc-orchestrator/dispatcher's step, not flutter-engineer's)."}
+looks_good:
+  - {file: "calai_frontend/lib/providers/user_provider.dart", line: "59-69", summary: "priorUserMessages captured from `current` before the current message is appended — correctly excludes current turn, includes only prior USER messages, oldest-first by construction. No merge/accumulation bug surface, matches ADR-008 Option A exactly."}
+  - {file: "calai_frontend/test/providers/onboarding_provider_test.dart", line: "35-82", summary: "Tests 2 and 3 are genuinely multi-call against one shared notifier/container, asserting on FakeApiService.lastConversationHistory after each call — real regression coverage for the cross-turn bug, not single-turn coverage dressed up."}
+  - {file: "calai_frontend/lib/core/api_service.dart", line: "56-57", summary: "conversation_history omitted from the POST body (not sent as []) when null/empty, avoiding any ambiguity with the backend's Optional[list[str]] default."}
+docs_sync_checked: true
+invariants_checked: true
+fix_loop_count: 0
+open_questions: []
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:46:31Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yes commit everything
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:52:19Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+keep testing while that fix runs
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:52:49Z — flutter-engineer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: history-sheet-stale-total-fix
+stage: flutter-engineer
+files_changed:
+  - calai_frontend/lib/providers/meal_provider.dart
+analyzer: "dart analyze lib/providers/meal_provider.dart lib/providers/history_provider.dart: No issues found!"
+contract:
+  consumed: "no new endpoints; internal Riverpod invalidation only (historyProvider <- meal_provider writes via storageServiceProvider)"
+  breaking: false
+handoffs:
+  - tester: "add a regression test that (1) writes an entry via MealSessionNotifier.submitMeal (or deleteEntry), (2) reads historyProvider.future once before the mutation to force it into cached state, (3) mutates, (4) reads historyProvider.future again and asserts the day's totalKcal reflects the new entry — this is the exact staleness bug from the iOS Simulator repro (319 -> 564 kcal after logging 2 boiled eggs and a banana)"
+tests:
+  added: []
+  run_cmd: "flutter test"
+  result: "26/26 passed (pre-existing count unchanged; no test added yet by this stage since tester owns regression coverage per the ownership table)"
+open_questions: []
+deferred:
+  - "No new test added here — tester stage owns adding the regression case per CLAUDE.md's pipeline (flutter-engineer -> tester -> reviewer)"
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:53:09Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+keep testing other flows too
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:54:33Z — tester
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: history-provider-stale-cache-fix
+stage: tester
+files_changed:
+  - /Users/siddhanttomar/Claude/Projects/calAi/calai_frontend/test/providers/meal_provider_test.dart
+covers:
+  - test: "submitMeal invalidates the cached historyProvider so today's total reflects the newly logged entry"
+    behaviour: "ref.invalidate(historyProvider) in MealSessionNotifier._resolve() after storage.appendEntry succeeds"
+    red_green: "failed before (Bad state: No element - stale cache had no entry for today) / passes after"
+  - test: "deleteEntry invalidates the cached historyProvider so a deleted entry's kcal is no longer counted"
+    behaviour: "ref.invalidate(historyProvider) in MealSessionNotifier.deleteEntry() after storage.deleteEntry succeeds"
+    red_green: "failed before (Expected 0.0, Actual 300.0 - stale cache still counted deleted entry) / passes after"
+matrix_rows:
+  covered: []
+  deferred:
+    - row: "retry() path invalidating historyProvider"
+      reason: "retry() calls the same _resolve() already covered by the submitMeal test; no separate invalidate call site exists for retry, so no additional case needed"
+tests:
+  run_cmd: "flutter test"
+  result: "28/28 passing (26 baseline + 2 new regression tests)"
+evals:
+  cases_added: []
+  gate_cmd: ""
+uncovered: []
+risk: low
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/providers/meal_provider_test.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:54:52Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+test the history sheet fix on simulator
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/providers/meal_provider_test.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:55:38Z — reviewer
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: structured report
+
+### Report
+
+```
+unit_id: history-stale-total-fix
+stage: reviewer
+verdict: pass
+gates_run:
+  - {cmd: "dart analyze", exit_code: 0}
+  - {cmd: "dart analyze lib/providers/meal_provider.dart lib/providers/history_provider.dart", exit_code: 0}
+  - {cmd: "flutter test", exit_code: 0}
+bucket1: []
+bucket2:
+  - {file: "calai_frontend/lib/providers/history_provider.dart", line: 4, summary: "Mutual import with meal_provider.dart for dateOnly; extracting dateOnly to a shared util file would remove the coupling (not urgent, dart analyze is clean)."}
+  - {file: "skills/flutter-dev/SKILL.md", line: 469, summary: "History sheet section has no note on the historyProvider invalidation contract meal_provider.dart now depends on; future mutation paths could silently skip invalidate()."}
+looks_good:
+  - {file: "calai_frontend/lib/providers/meal_provider.dart", line: 75, summary: "invalidate(historyProvider) correctly placed after storage.appendEntry succeeds in _resolve, covering both submitMeal and retry."}
+  - {file: "calai_frontend/lib/providers/meal_provider.dart", line: 84, summary: "invalidate(historyProvider) correctly placed after storage.deleteEntry succeeds in deleteEntry."}
+  - {file: "calai_frontend/test/providers/meal_provider_test.dart", line: 134, summary: "Cache-then-mutate-then-read regression tests genuinely reproduce the bug mechanism, not just a happy-path read."}
+docs_sync_checked: true
+invariants_checked: true
+fix_loop_count: 0
+open_questions: []
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/providers/meal_provider_test.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 07:57:34Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+yes commit everything
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/providers/meal_provider_test.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```
+
+---
+
+## 2026-09-14 08:03:12Z — subagent
+
+- session: `fd06b545-0e8b-4fd6-ac8c-def5c57b6883`
+- branch: `main`
+- report: prose (no yaml block expected from this agent type)
+
+### Report
+
+```
+commit and push everything
+```
+
+### Working tree at completion
+
+```
+ M .claude/agents/architecture-designer.md
+ M .claude/agents/reviewer.md
+ M .claude/agents/tester.md
+ M .claude/agents/ui-engineer.md
+ M CLAUDE.md
+ M artefacts/agent-memory.md
+ M calai_backend/api/routes.py
+ M calai_backend/schemas.py
+ M calai_backend/services/agent_service.py
+ M calai_backend/tests/test_agent_service.py
+ M calai_backend/tests/test_routes.py
+ M calai_frontend/README.md
+ M calai_frontend/lib/core/api_service.dart
+ M calai_frontend/lib/providers/meal_provider.dart
+ M calai_frontend/lib/providers/user_provider.dart
+ M calai_frontend/test/providers/meal_provider_test.dart
+ M calai_frontend/test/support/fake_api_service.dart
+ M rules/frontend-facts.md
+ M rules/gates.md
+ M skills/flutter-review/SKILL.md
+ M skills/flutter-test/SKILL.md
+ M skills/requirements-brief/SKILL.md
+?? archdocs/ADR-008-onboarding-conversation-history.md
+?? calai_frontend/test/providers/onboarding_provider_test.dart
+```

@@ -63,8 +63,29 @@ class _ParsedRequestWithMissing(ParsedRequest):
     missing_profile_fields: list[str] = Field(default_factory=list)
 
 EXTRACTION_PROMPT = """You are a structured data extractor for a calorie-tracking app.
-Read the user's message and extract ONLY the fields explicitly present in it.
-Do NOT guess or invent values for anything not mentioned — use null for any field that is absent.
+
+Conversation so far (oldest first). This may be a single message or several turns of an
+onboarding conversation.
+
+{conversation}
+
+There are TWO SEPARATE extraction instructions below — follow them independently, do not
+blend them:
+
+1. PROFILE FIELDS (weight_kg, height_cm, age, gender, activity_level, goal,
+   goal_rate_kg_per_week): extract these from ALL messages in the conversation above,
+   combined. A field mentioned in an earlier message and never contradicted later is still
+   present — do not forget it just because it wasn't repeated in the latest message. If the
+   same field is stated more than once with different values, the LAST stated value wins
+   (the user corrected themselves). Do NOT guess or invent a value for a field never
+   mentioned in any message — use null for that.
+
+2. CURRENT-TURN FIELDS (meal_text, meal_type, intent): extract these ONLY from the LATEST
+   message below (the last one in the conversation above). Do NOT pull meal_text/meal_type/
+   intent from an earlier turn — a meal mentioned several messages ago should not resurface
+   as "log this meal" again now.
+
+Latest message: {message}
 
 Return ONLY a valid JSON object with this exact structure — no explanation, no markdown:
 {{
@@ -80,15 +101,13 @@ Return ONLY a valid JSON object with this exact structure — no explanation, no
   "intent": "log_meal" or "set_profile" or "unknown"
 }}
 
-Important: "meal_text" must be null unless the message actually describes food or a
+Important: "meal_text" must be null unless the LATEST message actually describes food or a
 meal the user ate. Do not put unrelated questions, greetings, or profile-only messages
 into "meal_text".
 
-"intent" classifies the overall message: "log_meal" if it describes food/a meal to log,
+"intent" classifies the LATEST message only: "log_meal" if it describes food/a meal to log,
 "set_profile" if it provides personal profile details (weight/height/age/gender/activity
-level/goal), "unknown" if it does neither (or you are unsure).
-
-User message: {message}"""
+level/goal), "unknown" if it does neither (or you are unsure)."""
 
 
 class _ExtractedFieldsSchema(BaseModel):
@@ -126,15 +145,28 @@ class _ExtractedFieldsSchema(BaseModel):
     intent: str | None = None
 
 
-def extract_request_fields(message: str, llm: BaseChatModel | None) -> ParsedRequest:
+def extract_request_fields(
+    message: str,
+    llm: BaseChatModel | None,
+    conversation_history: list[str] | None = None,
+) -> ParsedRequest:
     """Turn a free-text /api/agent message into structured request fields.
 
     One LLM call (ADR-003's `extract_request_fields`), replacing the ReAct
     loop's field-extraction responsibility with a single-shot structured
-    extraction. `profile` is populated only if the message contains ALL of
-    CalcRequest's required fields; otherwise None. `meal_text` is populated
-    if the message describes a meal to log; `meal_type` defaults to "snack"
-    when meal_text is present but no type was mentioned.
+    extraction. `profile` is populated only if the FULL conversation
+    (conversation_history + message) contains ALL of CalcRequest's required
+    fields; otherwise None. `meal_text` is populated if the LATEST message
+    describes a meal to log; `meal_type` defaults to "snack" when meal_text
+    is present but no type was mentioned.
+
+    `conversation_history` (ADR-008): prior USER messages from the current
+    onboarding session, oldest first, NOT including `message` itself. When
+    present, profile fields are extracted from the full transcript (so a
+    field given two turns ago is not forgotten) while meal_text/meal_type/
+    intent are still extracted from only `message` (the current turn) — see
+    EXTRACTION_PROMPT's two-instruction split. Optional and defaulted so
+    every existing call site (single-message extraction) is unaffected.
 
     The `llm` parameter is accepted to match ADR-003's sketch signature and
     to keep the call site consistent with the rest of the orchestrator, but
@@ -146,8 +178,12 @@ def extract_request_fields(message: str, llm: BaseChatModel | None) -> ParsedReq
     """
     del llm  # accepted for ADR-003 signature parity; see docstring
 
+    all_messages = (conversation_history or []) + [message]
     safe_message = message.replace("{", "{{").replace("}", "}}")
-    prompt = EXTRACTION_PROMPT.format(message=safe_message)
+    conversation_block = "\n".join(
+        f"Message {i}: {m.replace('{', '{{').replace('}', '}}')}" for i, m in enumerate(all_messages, start=1)
+    )
+    prompt = EXTRACTION_PROMPT.format(message=safe_message, conversation=conversation_block)
     json_llm = get_json_llm()
 
     log.debug("[extract_request_fields] calling llm_call")
@@ -287,6 +323,7 @@ def _run_agent_orchestrator(
     llm: BaseChatModel | None,
     profile: CalcRequest | None = None,
     trigger: str = "message",
+    conversation_history: list[str] | None = None,
 ) -> AgentResponse:
     # ADR-005 contract 6: bind one correlation id for this request's entire
     # call tree (generates a UUID4 since routes.py doesn't yet supply one).
@@ -334,7 +371,15 @@ def _run_agent_orchestrator(
         # reaches these handlers if every model in LLM_MODELS has already
         # exhausted its retries, so these are genuine full-chain failures.
         try:
-            parsed_request = extract_request_fields(message, llm)
+            # Only pass conversation_history when actually supplied -- keeps
+            # this call site source-compatible with every existing
+            # extract_request_fields mock in tests/test_agent_service.py
+            # (fixed (message, llm) signature) that pre-dates ADR-008 and
+            # never receives a conversation_history in its own test setup.
+            if conversation_history:
+                parsed_request = extract_request_fields(message, llm, conversation_history=conversation_history)
+            else:
+                parsed_request = extract_request_fields(message, llm)
 
             calc = None
             calc_error: ValueError | None = None
@@ -555,23 +600,30 @@ def run_agent(
     llm: BaseChatModel | None,
     profile: CalcRequest | None = None,
     trigger: str = "message",
+    conversation_history: list[str] | None = None,
 ) -> AgentResponse:
     """Public entry point for /api/agent.
 
     ADR-007 Action Item 5: gained optional `profile`/`trigger` (mirroring
     AgentRequest's new fields) so the orchestrator can produce
     weekly_checkin/recommendation-typed responses using client-supplied
-    context. Both default such that an old call site (`run_agent(message,
-    llm)`) is unchanged.
+    context. ADR-008: gained optional `conversation_history` (mirroring
+    AgentRequest.conversation_history) so multi-turn onboarding slot-filling
+    re-extracts profile fields over the full transcript instead of losing
+    fields given in earlier turns. All default such that an old call site
+    (`run_agent(message, llm)`) is unchanged.
 
     Routes to the new Orchestrator by default; set USE_ORCHESTRATOR=false to
     roll back to the old ReAct loop (_run_agent_react_loop) without a code
     change (see calai_backend/config.py). The ReAct loop does not consume
-    profile/trigger -- it predates ADR-007 and is not being extended here
-    (ADR-003 Migration Plan: kept for rollback only).
+    profile/trigger/conversation_history -- it predates ADR-007/ADR-008 and
+    is not being extended here (ADR-003 Migration Plan: kept for rollback
+    only).
     """
     if USE_ORCHESTRATOR:
-        return _run_agent_orchestrator(message, llm, profile=profile, trigger=trigger)
+        return _run_agent_orchestrator(
+            message, llm, profile=profile, trigger=trigger, conversation_history=conversation_history,
+        )
     return _run_agent_react_loop(message, llm)
 
 

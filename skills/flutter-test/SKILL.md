@@ -90,7 +90,10 @@ Use DevTools' device toolbar (⌘⇧M) at phone width to keep the layout honest.
 Checklist:
 - [ ] First launch → lands on onboarding
 - [ ] Complete setup → `/api/calculate` called → goal stored → redirected to home
-- [ ] Log a meal → `/api/parse-meal` called → entry appears in list → today's ring fills
+- [ ] Log a meal → `/api/parse-meal` called → entry appears in the feed as `pending`, then
+      resolves to `logged` → the status strip's total, macros and progress fill all update
+- [ ] Open the history sheet right after logging → today's row shows the **new** total, not a
+      pre-write one (`historyProvider` is cached; see `rules/frontend-facts.md`)
 - [ ] Swipe to delete → day total decreases
 - [ ] Reload / relaunch → profile persists, today's meals still shown
 - [ ] Backend stopped → error surfaces (SnackBar), typed input is not lost

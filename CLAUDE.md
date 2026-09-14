@@ -66,6 +66,7 @@ When an agent reports back, extract and forward only what the next stage needs; 
 - Max **2** fix loops per unit of work; if issues persist, stop and escalate to the user with the open findings.
 - Bucket 2 (**simplification**) findings: apply if cheap, otherwise report to the user as optional. Check `rules/invariants.md` before recommending removal of anything — several things in this repo look like dead code and are load-bearing for a documented reason.
 - When a unit of work makes a previously-optional `.env` value required, follow `rules/env-vars.md` exactly — both the engineer making the change and `reviewer` (independently) run the key-name check.
+- **A `reviewer` pass is not the last step for a user-facing unit — the dispatcher runs it.** For anything a person actually touches (a screen, a conversational flow, an end-to-end feature), drive the real thing after the gate passes: restart the backend, rebuild and relaunch the app, and perform the actual user sequence. `rules/gates.md` lists the three bug classes the suite structurally cannot see, and both real bugs found on 2026-09-14 — ADR-008's cross-turn state loss and `historyProvider`'s stale cache — were found this way, each *after* a clean `reviewer` pass on green gates. A green suite plus `verdict: pass` means "no defect the gates can see", not "it works".
 
 ## Escalation tooling (dispatcher-level, not delegated to `reviewer`)
 

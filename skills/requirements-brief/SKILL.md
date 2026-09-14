@@ -61,6 +61,18 @@ Measurable. A command, a number, or an observable behaviour.
 ## Constraints
 Models (and cost/latency budget), platforms, privacy, offline behaviour, anything fixed.
 
+## State & continuity
+Does this feature's correctness depend on more than one call/request/turn (a conversation, a
+multi-step flow, anything where call 2 must remember something from call 1)? If yes: where does
+that state live (client-sent each call, server session, persisted), and what carries it between
+calls — name the exact field/mechanism. If a stateless primitive (a single-shot extraction, a
+one-request/one-response endpoint) is being reused for this feature, say explicitly whether its
+existing statelessness assumption still holds here. "N/A — single request/response, no state"
+is a valid and common answer; leaving this section out is not. (Added after ADR-008: onboarding's
+slot-filling silently lost previously-given fields across turns because a single-shot,
+single-message extraction primitive built for one-shot meal-parsing was reused for a multi-turn
+conversation without this question ever being asked on paper.)
+
 ## Contract touchpoints
 Exact endpoints, Pydantic models, storage keys, or Dart files that may change. Name them
 precisely. Mark each: unchanged / additive / **breaking**.

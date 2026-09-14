@@ -12,7 +12,7 @@ You will be briefed with a specific diff or set of changed files and the reason 
 Follow `skills/flutter-review/SKILL.md` exactly:
 1. Read the full file(s) in scope — never review from memory.
 2. Run `cd calai_frontend && dart analyze lib/<file>` and report all issues.
-3. Work through the checklist: correctness (API shapes, SharedPreferences keys, ring colour thresholds, go_router redirect logic, onboarding forward-only, swipe-to-delete state+storage sync), simplicity (no premature abstraction, no dead error handling, no WHAT-comments), Flutter conventions (const constructors, disposed AnimationControllers, Riverpod not setState, CustomPainter shouldRepaint correctness, ListView keys), architecture fit (models have no Flutter imports, api_service is HTTP-only, storage_service is SharedPreferences-only, providers don't touch http/SharedPreferences directly, screens only call providers).
+3. Work through the checklist: correctness (API shapes, SharedPreferences keys, status-strip zone-colour thresholds, top-level go_router redirect logic, provider cache invalidation on storage writes, swipe-to-delete state+storage sync), simplicity (no premature abstraction, no dead error handling, no WHAT-comments), Flutter conventions (const constructors, disposed AnimationControllers, Riverpod not setState, CustomPainter shouldRepaint correctness, ListView keys), architecture fit (models have no Flutter imports, api_service is HTTP-only, storage_service is SharedPreferences-only, providers don't touch http/SharedPreferences directly, screens only call providers).
 
 ## Backend changes
 Check against `archdocs/ADR-001-calai-architecture.md`, `archdocs/ADR-002-react-agent-design.md`, `archdocs/CALL-FLOW-AND-SOLID.md`, and `archdocs/ADR-006-nvidia-nim-migration.md`, and the shared facts in `rules/backend-facts.md` and `rules/ownership.md`. Backend work is split between `backend-engineer` (HTTP surface: `main.py`, `api/routes.py`, `config.py`, `schemas.py`) and `ai-engineer` (`services/`, `providers/`, `tools/`, `prompts/`, `calai_agent.py`) — check both sets of conventions regardless of which engineer's report you're gating, since a contract change in one often has a required counterpart edit in the other:
@@ -22,6 +22,19 @@ Check against `archdocs/ADR-001-calai-architecture.md`, `archdocs/ADR-002-react-
 - **If the change makes a previously-optional `.env` value required**, independently re-run the key-name check yourself per `rules/env-vars.md` — `dotenv_values(path).keys()` (names only, never values, never the file's raw contents). Do this even if the engineer's report claims they already checked; this is exactly the kind of pre-existing/unchanged-line bug a diff-focused review otherwise skips (a `load_dotenv()` call that predates this unit of work but only becomes dangerous once this change removes its fallback). `os.getenv()` returning truthy elsewhere in the codebase is not equivalent to this check.
 - If the change touches `parse_meal_text`/`MealParseAgent` (prompt, model, or extraction logic), run the eval gate from `rules/gates.md` (or a `--dataset`-scoped subset if the full run is too slow for this review) instead of eyeballing a JSON diff — report the exit code and any regression messages.
 - Run the gates in `rules/gates.md` and report results.
+- **If the change touches conversational/agentic flow** (`agent_service.py`'s orchestrator, onboarding, any multi-turn interaction) and its correctness could depend on state carried across calls, confirm `tester` added a genuine multi-call test (not just single-message coverage) — a conversational feature shipped with only single-turn tests is a **bucket-1 finding**, not a coverage nitpick. (Added after ADR-008: this exact gap — extraction tested one message at a time — is how the cross-turn state-loss bug reached production undetected.)
+
+## Config at a faked boundary (check this on every unit that touches one)
+
+Wherever the test suite injects a fake (`FakeApiService`, a fake storage service), the real
+value that fake stands in for is **never executed by any gate**. Read those real values
+directly — base URLs, endpoint paths, keys, timeouts — and confirm each is a usable value, not a
+placeholder, a TODO, or a stale default. An unfilled placeholder here is a bucket-1 finding even
+though every test passes, because passing tests are not evidence about this code path.
+
+Precedent: `api_service.dart` shipped with a literal `http://<LOCAL_IP>:8000/api` default
+through a green suite and a reviewer pass. The app could never have reached the backend; it was
+caught only by running it. See `rules/gates.md` "What the gates structurally cannot catch".
 
 ## Before recommending removal of anything
 Check `rules/invariants.md` first. Several things in this repo look like dead code or
@@ -90,6 +103,14 @@ For every renamed/removed/added field, route, enum value or storage key in the d
 that tells the next implementer the wrong field name is a **bucket-1 finding**, not a nitpick —
 this is exactly how `{"text": ...}` vs `meal_text` survived long enough to reach a spec, and how
 the `@tool`-location claim survived wrong in six places until an explicit audit caught it.
+
+**When you find one stale doc, grep the whole docs tree for that same retired concept before
+reporting** — rot from a single cause is almost never confined to one file. On 2026-09-14 a
+review correctly caught `skills/flutter-test/SKILL.md` still referencing the retired
+`day_ring.dart`; its sibling `skills/flutter-review/SKILL.md` carried three more references to
+the same retired ring and was missed, because only the one flagged file was checked. Note that
+`.claude/scripts/verify_rules.py` deliberately excludes `skills/*/SKILL.md` from its dead-path
+check, so nothing mechanical will catch this for you.
 
 Also confirm: the status header of the plan/ADR this unit executes against has been updated in
 the same run. A stale "BLOCKED on X" header sends the next session chasing a resolved problem.

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_service.dart';
 import '../models/meal_entry.dart';
+import 'history_provider.dart' show historyProvider;
 import 'user_provider.dart' show apiServiceProvider, storageServiceProvider;
 
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -71,6 +72,7 @@ class MealSessionNotifier extends AsyncNotifier<List<MealEntry>> {
       );
       await ref.read(storageServiceProvider).appendEntry(logged, date);
       _replace(logged);
+      ref.invalidate(historyProvider);
     } catch (e) {
       _replace(pending.asError("Couldn't log — tap to retry"));
     }
@@ -79,5 +81,6 @@ class MealSessionNotifier extends AsyncNotifier<List<MealEntry>> {
   Future<void> deleteEntry(String entryId) async {
     await ref.read(storageServiceProvider).deleteEntry(entryId, date);
     state = AsyncValue.data(_current.where((e) => e.id != entryId).toList());
+    ref.invalidate(historyProvider);
   }
 }

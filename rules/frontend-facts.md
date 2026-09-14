@@ -15,5 +15,19 @@
 - **Architecture layering.** Models are plain Dart, no Flutter imports. `api_service.dart` is
   HTTP-only, no state. `storage_service.dart` only wraps SharedPreferences. Providers depend on
   services, not directly on `http`/SharedPreferences. Screens only call providers.
+- **API base URL.** `ApiService.baseUrl` defaults to `http://localhost:8000/api`. The iOS
+  Simulator shares the host Mac's network stack, so `localhost` reaches a locally-run backend
+  directly; a **physical device** needs the Mac's LAN IP instead. This default is never
+  exercised by the test suite (tests inject `FakeApiService`), so a wrong value here fails only
+  at runtime — it shipped once as a literal unfilled `<LOCAL_IP>` placeholder behind a fully
+  green suite.
+- **Provider cache invalidation.** A provider that caches a derived read of storage must be
+  invalidated by every provider that writes that storage. Riverpod's `AsyncNotifierProvider`
+  runs `build()` once and caches; `ref.read(p.future)` returns the cached future and does **not**
+  rebuild. Concretely: any write path in `meal_provider.dart` that touches `storageServiceProvider`
+  must `ref.invalidate(historyProvider)` after the write succeeds (not before — invalidating
+  ahead of the write just re-caches stale data). Adding a new mutation path without this is a
+  correctness bug, not a nitpick: the history sheet silently served a pre-write total until it
+  was caught by hand on 2026-09-14.
 
 Referenced by: `flutter-engineer.md`, `ui-engineer.md`, `skills/flutter-dev/SKILL.md`.

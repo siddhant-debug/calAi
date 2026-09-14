@@ -31,6 +31,17 @@ class AgentRequest(BaseModel):
     "weekly_checkin": the client has locally determined a check-in is due and is
     explicitly requesting a weekly_checkin-typed AgentResponse; `message` is
     ignored server-side in this mode."""
+    conversation_history: list[str] | None = None
+    """Prior USER messages from the current onboarding session, oldest first,
+    NOT including `message` itself (that stays in `message`, unchanged from
+    today's contract). Populated by the client only while onboarding is
+    in progress (before `profile` has been confirmed via `/api/calculate`
+    + `storage_service.saveProfile`). None or empty on the first turn of a
+    session, and on any call made after a profile is already confirmed
+    (that path already sends `profile` instead — see ADR-007 Part 3).
+    Agent-authored messages (questions the assistant asked) are NOT
+    included — only what the user said, since those are the only messages
+    that can carry extractable profile fields."""
 
 
 class AgentMessageType(str, Enum):

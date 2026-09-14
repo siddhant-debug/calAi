@@ -85,7 +85,7 @@ def test_agent_route_returns_200_with_agent_response_shape(monkeypatch):
 
     monkeypatch.setattr(
         routes, "run_agent",
-        lambda message, llm, profile=None, trigger="message": AgentResponse(
+        lambda message, llm, profile=None, trigger="message", conversation_history=None: AgentResponse(
             response="hello back", iterations_used=1
         ),
     )

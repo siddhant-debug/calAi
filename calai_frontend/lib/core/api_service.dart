@@ -47,11 +47,14 @@ class ApiService {
     String message, {
     UserProfile? profile,
     String trigger = 'message',
+    List<String>? conversationHistory,
   }) async {
     final json = await _post('/agent', {
       'message': message,
       if (profile != null && profile.isComplete) 'profile': profile.toJson(),
       'trigger': trigger,
+      if (conversationHistory != null && conversationHistory.isNotEmpty)
+        'conversation_history': conversationHistory,
     });
     return AgentResponse.fromJson(json);
   }

@@ -47,9 +47,17 @@ class FakeApiService extends ApiService {
     throw StateError('FakeApiService.parseMeal called with no result/exception configured');
   }
 
+  List<String>? lastConversationHistory;
+
   @override
-  Future<AgentResponse> agent(String message, {UserProfile? profile, String trigger = 'message'}) async {
+  Future<AgentResponse> agent(
+    String message, {
+    UserProfile? profile,
+    String trigger = 'message',
+    List<String>? conversationHistory,
+  }) async {
     agentCallCount++;
+    lastConversationHistory = conversationHistory;
     if (agentException != null) throw agentException!;
     if (agentResponse != null) return agentResponse!;
     throw StateError('FakeApiService.agent called with no response/exception configured');

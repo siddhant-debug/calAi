@@ -61,8 +61,18 @@ class OnboardingNotifier extends AsyncNotifier<List<ConversationMessage>> {
     final withUserMessage = [...current, ConversationMessage.user(text)];
     state = AsyncValue.data(withUserMessage);
 
+    // All prior USER messages this session, oldest first, excluding `text`
+    // itself (matches AgentRequest.conversation_history's contract exactly).
+    final priorUserMessages = current
+        .where((m) => m.role == ConversationRole.user)
+        .map((m) => m.text)
+        .toList();
+
     try {
-      final response = await ref.read(apiServiceProvider).agent(text);
+      final response = await ref.read(apiServiceProvider).agent(
+            text,
+            conversationHistory: priorUserMessages.isEmpty ? null : priorUserMessages,
+          );
       state = AsyncValue.data([...withUserMessage, ConversationMessage.agent(response)]);
     } catch (e) {
       final fallback = AgentResponse(

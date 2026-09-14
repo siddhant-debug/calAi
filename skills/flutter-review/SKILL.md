@@ -37,12 +37,16 @@ Report all issues found, even if the user didn't ask about them.
       shape; so is code still branching on "string vs list" for `detail` itself
 - [ ] Storage keys match the spec exactly, if the client-side storage option is in force
       (persistence is an open decision — see `flutter-dev/SKILL.md` "Decisions pending")
-- [ ] Ring fill clamped to `[0.0, 1.0]` before painting
-- [ ] Colour thresholds match `flutter-dev/SKILL.md` "Day ring colour logic" — read them there,
-      don't trust this list if the two disagree
-- [ ] Ring range / week window matches the spec **once decision #3 is resolved** — flag as
-      blocked, don't assume Mon–Fri
-- [ ] go_router redirect: no profile → onboarding, has profile → home, never back after finish
+- [ ] Status strip (`status_strip.dart`) progress fill clamped to `[0.0, 1.0]`, and its zone
+      colours match `flutter-dev/SKILL.md`'s `zoneColor` thresholds — read them there, don't
+      trust this list if the two disagree. (The day ring is **retired**; `day_ring.dart` was
+      deleted in the notebook-diary pivot. Never review against it.)
+- [ ] go_router redirect is **top-level** on `GoRouter`, not per-route on `/` only — it must
+      re-evaluate `hasProfile` against the *current* `matchedLocation` on every
+      `refreshListenable` notification, or an already-onboarded user is stranded on
+      `/onboarding` when the async profile load resolves after the first redirect
+- [ ] A provider that caches a derived read of storage is invalidated by every provider that
+      writes that storage — see `rules/frontend-facts.md` "Provider cache invalidation"
 - [ ] Swipe-to-delete updates provider state AND storage, and targets a **stable id** —
       keying by meal name collides on duplicates
 - [ ] Nothing implements an item listed under "Decisions pending" in `flutter-dev/SKILL.md`

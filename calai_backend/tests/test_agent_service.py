@@ -167,6 +167,77 @@ def test_extract_request_fields_raises_valueerror_on_invalid_profile(monkeypatch
 
 
 # ---------------------------------------------------------------------------
+# extract_request_fields -- ADR-008 multi-turn conversation_history
+#
+# Regression test for the exact reported bug: onboarding slot-filling forgot
+# fields given in an earlier turn because extraction only ever saw the
+# current message. Simulates two real turns end-to-end through the real
+# extract_request_fields call site (not a mocked orchestrator), asserting
+# turn 2's extraction carries ALL SIX profile fields forward, not just the
+# three given in turn 2. Not covered by evals/ (parse_meal_text-only harness,
+# single-message scoring) -- this pytest case is the permanent regression
+# guard for this bug, per ADR-008 Action Item 7.
+# ---------------------------------------------------------------------------
+
+def test_extract_request_fields_conversation_history_carries_forward_earlier_turn_fields(monkeypatch):
+    turn_1_message = "I weigh 75kg, I'm 178cm tall, and I'm 30 years old."
+    turn_2_message = "I'm male, moderately active, and want to lose weight."
+
+    # Turn 1: only weight/height/age given -- profile incomplete, missing
+    # gender/activity_level/goal.
+    turn_1_raw = _raw(weight_kg=75, height_cm=178, age=30, intent="set_profile")
+    monkeypatch.setattr(agent_service, "get_json_llm", lambda: FakeLLM(json.dumps(turn_1_raw)))
+
+    turn_1_parsed = agent_service.extract_request_fields(turn_1_message, llm=object())
+
+    assert turn_1_parsed.profile is None
+    assert set(turn_1_parsed.missing_profile_fields) == {"gender", "activity_level", "goal"}
+
+    # Turn 2: only gender/activity_level/goal given in THIS message, but
+    # conversation_history carries turn 1's message. A real LLM re-reads the
+    # full transcript and returns all six fields combined -- this test's
+    # FakeLLM stands in for that real re-extraction, asserting the CALLER
+    # (extract_request_fields) correctly builds and feeds the full
+    # transcript rather than dropping turn 1's message on the floor.
+    turn_2_raw = _raw(**FULL_PROFILE_FIELDS, intent="set_profile")
+    monkeypatch.setattr(agent_service, "get_json_llm", lambda: FakeLLM(json.dumps(turn_2_raw)))
+
+    turn_2_parsed = agent_service.extract_request_fields(
+        turn_2_message, llm=object(), conversation_history=[turn_1_message],
+    )
+
+    assert turn_2_parsed.profile is not None
+    for field, expected_value in FULL_PROFILE_FIELDS.items():
+        assert getattr(turn_2_parsed.profile, field) == expected_value
+    assert turn_2_parsed.missing_profile_fields == []
+
+
+def test_extract_request_fields_builds_conversation_block_with_all_messages(monkeypatch):
+    """The prompt sent to the LLM must actually contain every prior message,
+    not just the latest one -- otherwise a real model has no way to recover
+    a field from an earlier turn regardless of instructions."""
+    captured_prompts = []
+
+    class CapturingLLM:
+        def invoke(self, messages):
+            captured_prompts.append(messages[0].content)
+            return SimpleNamespace(content=json.dumps(_raw(**FULL_PROFILE_FIELDS, intent="set_profile")))
+
+    monkeypatch.setattr(agent_service, "get_json_llm", lambda: CapturingLLM())
+
+    agent_service.extract_request_fields(
+        "I'm male, moderately active, and want to lose weight.",
+        llm=object(),
+        conversation_history=["I weigh 75kg, I'm 178cm tall, and I'm 30 years old."],
+    )
+
+    assert len(captured_prompts) == 1
+    prompt = captured_prompts[0]
+    assert "I weigh 75kg, I'm 178cm tall, and I'm 30 years old." in prompt
+    assert "I'm male, moderately active, and want to lose weight." in prompt
+
+
+# ---------------------------------------------------------------------------
 # extract_request_fields -- Intent coercion (ADR-005 REQ-01/contract 2)
 # ---------------------------------------------------------------------------
 
@@ -531,7 +602,7 @@ def test_run_agent_dispatches_to_orchestrator_when_flag_true(monkeypatch):
     sentinel = AgentResponse(response="from orchestrator", iterations_used=1)
     called = {}
 
-    def fake_orchestrator(message, llm, profile=None, trigger="message"):
+    def fake_orchestrator(message, llm, profile=None, trigger="message", conversation_history=None):
         called["orchestrator"] = (message, llm)
         return sentinel
 

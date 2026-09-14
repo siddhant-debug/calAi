@@ -38,6 +38,13 @@ those rules are this project's own and always win on conflict.
 - [ ] Applicable rows of the exceptional-case matrix (`review/05-testing-and-evals.md` §3) are
       covered, or listed as deferred **with a reason**. Silence is not coverage
 - [ ] Bug → permanent regression case, never a one-off manual check
+- [ ] **If the change touches conversational/agentic flow** (`agent_service.py`'s orchestrator,
+      onboarding, any multi-turn interaction) and its correctness could depend on state carried
+      across more than one call: at least one test that makes **two or more sequential calls**
+      and asserts the second call's result reflects the first — not just single-message/
+      single-request coverage in isolation. (Added after ADR-008: every existing test exercised
+      one message at a time, which is exactly the blind spot where the cross-turn state-loss bug
+      lived undetected.)
 - [ ] Prompt/model/extraction changed ⇒ golden cases added, and the `run_eval.py --gate`
       command included in the report for `reviewer` to run
 - [ ] A thin golden category (fewer than ~15 examples) is broadened, not just appended to —

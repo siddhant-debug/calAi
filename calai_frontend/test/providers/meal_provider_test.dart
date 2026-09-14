@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:calai_frontend/core/api_service.dart';
 import 'package:calai_frontend/models/meal_entry.dart';
+import 'package:calai_frontend/providers/history_provider.dart';
 import 'package:calai_frontend/providers/meal_provider.dart';
 import 'package:calai_frontend/providers/user_provider.dart';
 
@@ -128,5 +129,84 @@ void main() {
     expect(finalState.id, erroredEntry.id, reason: 'same card must update in place across retry');
     expect(finalState.status, EntryStatus.logged);
     expect(finalState.totalKcal, 90);
+  });
+
+  test('submitMeal invalidates the cached historyProvider so today\'s total '
+      'reflects the newly logged entry (regression for the stale-history bug '
+      'where the history sheet kept showing pre-mutation totals)', () async {
+    final fakeApi = FakeApiService(
+      parseMealResult: const MealParseResult(
+        items: [],
+        totalKcal: 245,
+        mealType: 'lunch',
+        modelLatencyMs: 300,
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [apiServiceProvider.overrideWithValue(fakeApi)],
+    );
+    addTearDown(container.dispose);
+
+    // Force historyProvider into Riverpod's cached state BEFORE any meal is
+    // logged — this is the step that reproduces the original bug. Without
+    // this prior read, a first-ever read would naturally be fresh and the
+    // test wouldn't catch a missing invalidate().
+    final beforeHistory = await container.read(historyProvider.future);
+    final beforeToday = beforeHistory.days.where((d) => d.date == date);
+    final beforeTotal = beforeToday.isEmpty ? 0.0 : beforeToday.single.totalKcal;
+
+    await container.read(mealSessionProvider(date).future);
+    final notifier = container.read(mealSessionProvider(date).notifier);
+    await notifier.submitMeal('chicken salad');
+
+    final loggedState = container.read(mealSessionProvider(date)).value!.single;
+    expect(loggedState.status, EntryStatus.logged);
+
+    final afterHistory = await container.read(historyProvider.future);
+    final afterToday = afterHistory.days.singleWhere((d) => d.date == date);
+    expect(
+      afterToday.totalKcal,
+      beforeTotal + 245,
+      reason: 'historyProvider must be invalidated after appendEntry so the '
+          'cached AsyncNotifier state is not stale',
+    );
+  });
+
+  test('deleteEntry invalidates the cached historyProvider so a deleted '
+      'entry\'s kcal is no longer counted', () async {
+    final fakeApi = FakeApiService(
+      parseMealResult: const MealParseResult(
+        items: [],
+        totalKcal: 300,
+        mealType: 'dinner',
+        modelLatencyMs: 300,
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [apiServiceProvider.overrideWithValue(fakeApi)],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(mealSessionProvider(date).future);
+    final notifier = container.read(mealSessionProvider(date).notifier);
+    await notifier.submitMeal('steak');
+    final logged = container.read(mealSessionProvider(date)).value!.single;
+
+    // Cache historyProvider's state with the entry present.
+    final withEntry = await container.read(historyProvider.future);
+    final withEntryDay = withEntry.days.singleWhere((d) => d.date == date);
+    expect(withEntryDay.totalKcal, 300);
+
+    await notifier.deleteEntry(logged.id);
+
+    final afterDelete = await container.read(historyProvider.future);
+    final afterDeleteToday = afterDelete.days.where((d) => d.date == date);
+    final afterDeleteTotal = afterDeleteToday.isEmpty ? 0.0 : afterDeleteToday.single.totalKcal;
+    expect(
+      afterDeleteTotal,
+      0.0,
+      reason: 'historyProvider must be invalidated after deleteEntry so the '
+          'cached AsyncNotifier state is not stale',
+    );
   });
 }
